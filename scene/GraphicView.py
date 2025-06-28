@@ -1,13 +1,17 @@
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPainter, QBrush, QColor, QFont
+from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene
 
 from draw.CameraManager import Camera
+from draw.CursorManager import CursorManager
 from draw.Draw import Draw
 from draw.DynamicInformationManager import AnnotationManager
 from draw.GridManager import Grid
 from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
+from graphic_view_element.PreviewManager import PreviewManager
+from graphic_view_element.ElementManager import ElementManager
+from graphic_view_element.style.StyleElement import StyleElement
 
 
 class GraphicViewContainer(QWidget):
@@ -94,15 +98,31 @@ class GraphicView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
 
-        self._background_color = None
-
         # Composants métiers
         self.draw = Draw()
         self.grid = Grid(self)
         self.camera = Camera(self)
+        self.cursor_manager = CursorManager()
         self.annotation_manager = AnnotationManager(self)
 
+        # Event
         self.mouse_tracker = MouseTracker(self)
+
+
+        # Element style
+        self.style_element = StyleElement()
+
+        # Creation des element
+        self.element_registry = ElementManager()
+
+        # Preview
+        self.preview_manager = PreviewManager(scene, self.style_element, self.element_registry)
+        #self.GraphicItem = GraphicItem(scene)
+
+
+        self.shortcut_map = {}  # clé Qt.Key → nom d'outil
+
+
 
         # Configuration de base de la vue
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
@@ -130,9 +150,7 @@ class GraphicView(QGraphicsView):
 
         :param hex_color: Couleur au format hexadécimal (ex: '#FF0000' ou '#FF0000FF' avec alpha)
         """
-        self._background_color = QColor(hex_color)
-
-        self.setBackgroundBrush(QBrush(self._background_color))
+        self.setBackgroundBrush(QBrush(QColor(hex_color)))
 
     def g_scale(self, sx, sy):
         self.scale(sx, sy)
@@ -142,6 +160,7 @@ class GraphicView(QGraphicsView):
 
     def g_center_camera_on(self, pos_x: int, pos_y: int):
         self.centerOn(pos_x, pos_y)
+
 
     # --------------------start text annotation --------------------
 
@@ -155,6 +174,83 @@ class GraphicView(QGraphicsView):
         self.annotation_manager.remove_label(id_)
 
     # -------------------- end text annotation ---------------------
+
+    # -------------------- start scene unit ------------------------
+
+    def g_set_unit(self, unit: str):
+        if unit not in ("px", "mm", "cm"):
+            raise ValueError("Unit must be 'px', 'mm' or 'cm'")
+
+        if hasattr(self, 'rulers'):
+            self.rulers["h"].unit = unit
+            self.rulers["v"].unit = unit
+
+            self._update_rulers()
+
+    # -------------------- end scene unit --------------------------
+
+
+    # -------------------- start style method ------------------
+
+    def g_set_fill_color(self, color: QColor):
+        self.style_element.set_fill_color(color)
+
+    def g_set_border_color(self, color: QColor):
+        self.style_element.set_border_color(color)
+
+    def g_set_border_width(self, width: int):
+        self.style_element.set_border_width(width)
+
+    def g_set_border_style(self, border_style: Qt.PenStyle):
+        self.style_element.set_border_style(border_style)
+
+    def g_set_tool(self, tool: str):
+        self.style_element.set_tool(tool)
+
+    def g_get_tool(self):
+        self.style_element.get_tool()
+
+    # -------------------- end style method --------------------
+
+
+    # -------------------- start register object preview method-
+
+    def g_register_preview_method(self, tool_name: str, preview_class):
+        self.preview_manager.register_tool_preview(tool_name, preview_class)
+
+    # -------------------- end register object preview method --
+
+
+    # -------------------- start register object view method ---
+    def g_register_view_element(self, tool_name: str, view_class):
+        """Associer une preview à un nom d’outil (Tool ou str)."""
+        self.element_registry.register(tool_name, view_class)
+
+    # -------------------- end register object view method -----
+
+
+    # -------------------- start register shortcut tool --------
+
+    def g_register_shortcut(self, qt_key: Qt.Key, tool_name: str):
+        """Associe une touche Qt à un nom d’outil (ex: Qt.Key_L → 'line')"""
+        self.shortcut_map[qt_key] = tool_name
+        print(f"[RACCOURCI] {qt_key.name} → {tool_name}")
+
+    # -------------------- end register shortcut tool ----------
+
+
+    # -------------------- start register cursor tool --------
+
+    def g_register_cursor(self, tool_name: str, cursor: Qt.CursorShape | QCursor):
+        """Associe une touche Qt à un nom d’outil (ex: Qt.Key_L → 'line')"""
+        self.cursor_manager.register_tool(tool_name, cursor)
+        print(f"[Cursor register] {tool_name} → {cursor.name}")
+
+    def g_set_cursor(self, cursor: Qt.CursorShape | QCursor):
+        self.setCursor(cursor)
+
+
+    # -------------------- end register cursor tool ----------
 
 
     # -------------------- private method --------------------
@@ -181,19 +277,47 @@ class GraphicView(QGraphicsView):
         # mise a jour des rulers
         self._update_rulers()
 
+        print(self.camera.get_current_zoom())
+
+
     def mousePressEvent(self, event):
+
+        # Ignorer si clic molette
+        if event.button() == Qt.MouseButton.MiddleButton:
+            # Tu peux laisser passer le mouvement caméra ici si tu veux :
+            self.mouse_tracker.process_mouse_press(event)
+            self.camera.handle_mouse_press(event)  # facultatif
+            return  # on ne fait rien d’autre (pas de preview, pas de super())
+
+
         self.mouse_tracker.process_mouse_press(event)
 
         if not self.camera.handle_mouse_press(event):
             super().mousePressEvent(event)
+
         # mise a jour des rulers
         self._update_rulers()
 
+        # Création de la preview
+        self.preview_manager.start_preview(self.mapToScene(event.pos()))
+
+
     def mouseReleaseEvent(self, event):
+
+        # Ignorer si clic molette
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.mouse_tracker.process_mouse_release(event)
+            self.camera.handle_mouse_release(event)
+            return
+
         self.mouse_tracker.process_mouse_release(event)
 
         if not self.camera.handle_mouse_release(event):
             super().mouseReleaseEvent(event)
+
+        self.preview_manager.create_item(self.mapToScene(event.pos()))
+
+
 
     def mouseDoubleClickEvent(self, event):
         self.mouse_tracker.process_mouse_double_click(event)
@@ -204,6 +328,8 @@ class GraphicView(QGraphicsView):
 
         if not self.camera.handle_mouse_move(event):
             super().mouseMoveEvent(event)
+
+        self.preview_manager.update_preview(self.mapToScene(event.pos()))
 
 
 
@@ -216,11 +342,36 @@ class GraphicView(QGraphicsView):
 
         self.annotation_manager.resize_all()
 
+
+
     def scrollContentsBy(self, dx: int, dy: int):
         super().scrollContentsBy(dx, dy)
 
         # mise a jour des rulers
         self._update_rulers()
+
+
+    def keyPressEvent(self, event):
+
+        print("KEY PRESS")
+
+        key = event.key()
+
+        if key in self.shortcut_map:
+            tool = self.shortcut_map[key]
+            self.g_set_tool(tool)
+            print(f"[TOOL] Activation de l'outil '{tool}' via touche : {key}")
+            event.accept()
+
+            cursor = self.cursor_manager.get_cursor(tool)
+            if cursor:
+                self.setCursor(cursor)
+            else:
+                self.unsetCursor()
+
+            return
+
+        super().keyPressEvent(event)
 
     # -------------------- EVENT --------------------
 

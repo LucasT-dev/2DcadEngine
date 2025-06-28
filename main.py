@@ -1,8 +1,23 @@
 import sys
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPainter, QColor, QFont
 from PyQt6.QtWidgets import QApplication, QMainWindow, QGraphicsScene
 
+from graphic_view_element.element_manager.CircleCenterElement import CircleCenterElement
+from graphic_view_element.element_manager.CircleElement import CircleElement
+from graphic_view_element.element_manager.LineElement import LineElement
+from graphic_view_element.element_manager.RectangleCenterElement import RectangleCenterElement
+from graphic_view_element.element_manager.RectangleElement import RectangleElement
+from graphic_view_element.element_manager.SquareCenterElement import SquareCenterElement
+from graphic_view_element.element_manager.SquareElement import SquareElement
+from graphic_view_element.preview_manager.CircleCenterPreview import CircleCenterPreview
+from graphic_view_element.preview_manager.CirclePreview import CirclePreview
+from graphic_view_element.preview_manager.LinePreview import LinePreview
+from graphic_view_element.preview_manager.RectangleCenterPreview import RectangleCenterPreview
+from graphic_view_element.preview_manager.RectanglePreview import RectanglePreview
+from graphic_view_element.preview_manager.SquareCenterPreview import SquareCenterPreview
+from graphic_view_element.preview_manager.SquarePreview import SquarePreview
 from scene.GraphicView import GraphicViewContainer
 
 
@@ -50,7 +65,6 @@ class MainWindow(QMainWindow):
 
         # Défini le centre de la scene
         #self.graphic_view.view.g_center_camera_on(0, 0)
-
 
 
         self.graphic_view.view.camera.set_pan_enabled(True)
@@ -125,28 +139,87 @@ class MainWindow(QMainWindow):
         )"""
 
 
-        self.graphic_view.view.camera.set_zoom_limits(1.0, 10.0)
-        self.graphic_view.view.camera.set_zoom_factor(1.2)
+        self.graphic_view.view.camera.set_zoom_limits(0.8, 10.0)
+        self.graphic_view.view.camera.set_zoom_factor(1.2) # 1.2
         self.graphic_view.view.camera.set_zoom_to_cursor(True)
         self.graphic_view.view.camera.zoom_to(1.0)
 
+        self.graphic_view.view.g_set_unit("mm")
+
+        #self.graphic_view.view.camera.set_zoom_percent(100)
+
+        # 1. Place une ligne de 100 mm dans la scène
+        self.graphic_view.view.scene().addLine(0, 0, 100, 0)
+
+        # 2. Calibre automatiquement en fonction du rendu visuel
+        dpi = self.graphic_view.view.camera.auto_calibrate_dpi_from_scene(mm_in_scene=100)
+        print(f"DPI estimé automatiquement : {dpi:.2f}")
+
+        # 3. Applique un zoom à 100% réel
+        self.graphic_view.view.camera.set_zoom_percent(100)
 
 
         self.graphic_view.view.mouse_tracker.mouseMoved.connect(lambda state: self.mousse_move(state["scene_pos"]))
-        self.graphic_view.view.mouse_tracker.mouseClicked.connect(lambda state: print("Click", state["buttons"]))
-        self.graphic_view.view.mouse_tracker.mouseDoubleClicked.connect(lambda state: print("Double click"))
-        self.graphic_view.view.mouse_tracker.mouseWheel.connect(lambda state: print("mouseWheel"))
-        self.graphic_view.view.mouse_tracker.mouseDragged.connect(lambda state: print("mouseDragged"))
-        self.graphic_view.view.mouse_tracker.mouseHovered.connect(lambda state: print("mouseHovered"))
+        #self.graphic_view.view.mouse_tracker.mouseClicked.connect(lambda state: print("Click", state["buttons"]))
+        #self.graphic_view.view.mouse_tracker.mouseDoubleClicked.connect(lambda state: print("Double click"))
+        self.graphic_view.view.mouse_tracker.mouseWheel.connect(lambda state: self.wheel_move())
+        #self.graphic_view.view.mouse_tracker.mouseDragged.connect(lambda state: print("mouseDragged"))
+        #self.graphic_view.view.mouse_tracker.mouseHovered.connect(lambda state: print("mouseHovered"))
 
         self.graphic_view.view.g_add_text_annotation("mouse", "", 10, 10, font=QFont("Arial", 8), style=None)
+        self.graphic_view.view.g_add_text_annotation("zoom", f"Zoom : 100 %", 10, 30, font=QFont("Arial", 8), style=None)
 
 
         # mise a jour de la position des regles
         #self.graphic_view.set_ruler_position(horizontal="top", vertical="right")
 
+
+
+        self.graphic_view.view.g_register_preview_method("Circle", CirclePreview)
+        self.graphic_view.view.g_register_preview_method("Rectangle", RectanglePreview)
+        self.graphic_view.view.g_register_preview_method("Line", LinePreview)
+        self.graphic_view.view.g_register_preview_method("CircleFromCenter", CircleCenterPreview)
+        self.graphic_view.view.g_register_preview_method("RectangleFromCenter", RectangleCenterPreview)
+        self.graphic_view.view.g_register_preview_method("SquareFromCenter", SquareCenterPreview)
+        self.graphic_view.view.g_register_preview_method("Square", SquarePreview)
+
+        self.graphic_view.view.g_register_view_element("Circle", CircleElement)
+        self.graphic_view.view.g_register_view_element("Rectangle", RectangleElement)
+        self.graphic_view.view.g_register_view_element("Line", LineElement)
+        self.graphic_view.view.g_register_view_element("CircleFromCenter", CircleCenterElement)
+        self.graphic_view.view.g_register_view_element("RectangleFromCenter", RectangleCenterElement)
+        self.graphic_view.view.g_register_view_element("SquareFromCenter", SquareCenterElement)
+        self.graphic_view.view.g_register_view_element("Square", SquareElement)
+
+        self.graphic_view.view.g_set_tool("SquareFromCenter")
+        #self.graphic_view.view.g_set_tool("Mouse")
+
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_L, "Line")
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_R, "Rectangle")
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_C, "Circle")
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_T, "Text")
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_M, "Mouse")
+
+        self.graphic_view.view.g_register_cursor("Rectangle", Qt.CursorShape.CrossCursor)
+        self.graphic_view.view.g_register_cursor("Line", Qt.CursorShape.CrossCursor)
+        self.graphic_view.view.g_register_cursor("Text", Qt.CursorShape.CrossCursor)
+        self.graphic_view.view.g_register_cursor("Circle", Qt.CursorShape.CrossCursor)
+
+        self.graphic_view.view.g_register_cursor("Mouse", Qt.CursorShape.ArrowCursor)
+
+
+        #self.graphic_view.view.g_set_fill_color(QColor(0,0,0, 0))
+
+
+
+
     def mousse_move(self, scene_pos):
-        self.graphic_view.view.annotation_manager.update_text("mouse",  f"x = {int(scene_pos.x())} | y = {int(scene_pos.y())}")
+        self.graphic_view.view.annotation_manager.update_text("mouse",  f"x : {int(scene_pos.x())} | y = {int(scene_pos.y())}")
+
+    def wheel_move(self):
+        var = int(self.graphic_view.view.camera.get_zoom_percent())
+
+        self.graphic_view.view.annotation_manager.update_text("zoom",  f"Zoom : {var} %")
 
 
 

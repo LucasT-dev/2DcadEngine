@@ -16,6 +16,9 @@ class HorizontalRuler(QWidget):
         self._text_color = QColor("#FFFFFF")
         self._font = QFont("Arial", 7)
 
+        self.unit = "mm"  # 'px', 'mm', 'cm'
+        self.dpi = self.logicalDpiX()  # ou self.view.logicalDpiX() pour précision
+
         self.setFixedHeight(20)
 
         self.spacing = 50
@@ -49,6 +52,26 @@ class HorizontalRuler(QWidget):
         self._font = font
         self.update()
 
+    def set_unit(self, unit: str):
+
+        print("set unit test")
+
+        if unit not in ("px", "mm", "cm"):
+            raise ValueError("Unit must be 'px', 'mm' or 'cm'")
+        self.unit = unit
+        self.update()
+
+        print("set unit test")
+
+    def _convert_value(self, scene_value: float) -> float:
+        if self.unit == "px":
+            return scene_value
+        elif self.unit == "mm":
+            return (scene_value / self.dpi) * 25.4  # 1 inch = 25.4 mm
+        elif self.unit == "cm":
+            return (scene_value / self.dpi) * 2.54
+        return scene_value
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(event.rect(), self._background_color)
@@ -75,7 +98,11 @@ class HorizontalRuler(QWidget):
                 if x % self.major_tick_interval == 0:
                     painter.drawLine(int(x_view), 0, int(x_view), self.major_tick)
                     painter.setPen(QPen(self._text_color))
-                    painter.drawText(int(x_view + 2), self.major_tick + 6, str(x))
+
+                    label = f"{self._convert_value(x):.1f}"
+                    painter.drawText(int(x_view + 2), self.major_tick + 6, label)
+                    #painter.drawText(int(x_view + 2), self.major_tick + 6, str(x))
+
                     painter.setPen(QPen(self._tick_color))
                 else:
                     painter.drawLine(int(x_view), 0, int(x_view), self.minor_tick)
@@ -98,6 +125,9 @@ class VerticalRuler(QWidget):
         self._tick_color = QColor("#888888")
         self._text_color = QColor("#FFFFFF")
         self._font = QFont("Arial", 7)
+
+        self.unit = "mm"  # 'px', 'mm', 'cm'
+        self.dpi = self.logicalDpiX()  # ou self.view.logicalDpiX() pour précision
 
         self.spacing = 50
         self.major_tick = 10
@@ -130,6 +160,26 @@ class VerticalRuler(QWidget):
         self._font = font
         self.update()
 
+    def set_unit(self, unit: str):
+
+        print("set unit test")
+
+        if unit not in ("px", "mm", "cm"):
+            raise ValueError("Unit must be 'px', 'mm' or 'cm'")
+        self.unit = unit
+        self.update()
+
+        print("set unit test")
+
+    def _convert_value(self, scene_value: float) -> float:
+        if self.unit == "px":
+            return scene_value
+        elif self.unit == "mm":
+            return (scene_value / self.dpi) * 25.4  # 1 inch = 25.4 mm
+        elif self.unit == "cm":
+            return (scene_value / self.dpi) * 2.54
+        return scene_value
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(event.rect(), self._background_color)
@@ -157,7 +207,12 @@ class VerticalRuler(QWidget):
                     painter.drawLine(0, int(y_view), self.major_tick, int(y_view))
                     painter.setPen(QPen(self._text_color))
                     label = str(y)
+
+                    label = f"{self._convert_value(y):.1f}"
                     painter.drawText(self.major_tick - 8, int(y_view - 5), label)
+
+                    #painter.drawText(self.major_tick - 8, int(y_view - 5), label)
+
                     painter.setPen(QPen(self._tick_color))
                 else:
                     painter.drawLine(0, int(y_view), self.minor_tick, int(y_view))
