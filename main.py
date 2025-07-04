@@ -1,6 +1,6 @@
 import sys
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtGui import QPainter, QColor, QFont
 from PyQt6.QtWidgets import QApplication, QMainWindow, QGraphicsScene
 
@@ -160,6 +160,9 @@ class MainWindow(QMainWindow):
 
 
         self.graphic_view.view.mouse_tracker.mouseMoved.connect(lambda state: self.mousse_move(state["scene_pos"]))
+
+
+        self.graphic_view.view.tool_changed.connect(lambda tool: self.change_tool(tool))
         #self.graphic_view.view.mouse_tracker.mouseClicked.connect(lambda state: print("Click", state["buttons"]))
         #self.graphic_view.view.mouse_tracker.mouseDoubleClicked.connect(lambda state: print("Double click"))
         self.graphic_view.view.mouse_tracker.mouseWheel.connect(lambda state: self.wheel_move())
@@ -168,6 +171,8 @@ class MainWindow(QMainWindow):
 
         self.graphic_view.view.g_add_text_annotation("mouse", "", 10, 10, font=QFont("Arial", 8), style=None)
         self.graphic_view.view.g_add_text_annotation("zoom", f"Zoom : 100 %", 10, 30, font=QFont("Arial", 8), style=None)
+        self.graphic_view.view.g_add_text_annotation("tool", f"Tool", 10, 50, font=QFont("Arial", 8), style=None)
+
 
 
         # mise a jour de la position des regles
@@ -198,7 +203,11 @@ class MainWindow(QMainWindow):
         self.graphic_view.view.g_register_shortcut(Qt.Key.Key_R, "Rectangle")
         self.graphic_view.view.g_register_shortcut(Qt.Key.Key_C, "Circle")
         self.graphic_view.view.g_register_shortcut(Qt.Key.Key_T, "Text")
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_O, "CircleFromCenter")
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_S, "Square")
+
         self.graphic_view.view.g_register_shortcut(Qt.Key.Key_M, "Mouse")
+        self.graphic_view.view.g_register_shortcut(Qt.Key.Key_Escape, "Mouse")
 
         self.graphic_view.view.g_register_cursor("Rectangle", Qt.CursorShape.CrossCursor)
         self.graphic_view.view.g_register_cursor("Line", Qt.CursorShape.CrossCursor)
@@ -210,11 +219,38 @@ class MainWindow(QMainWindow):
 
         #self.graphic_view.view.g_set_fill_color(QColor(0,0,0, 0))
 
+        #self.graphic_view.view.g_change_border_color_items_selected(QColor(0, 255, 0))
 
 
+        self.graphic_view.view.g_add_item(CircleCenterElement.create_custom_graphics_item(
+
+            center=QPointF(100, 100),
+            edge=QPointF(110, 110),
+            border_color=QColor(255,0,0, 255),
+            border_with=1,
+            border_style=Qt.PenStyle.DashDotDotLine,
+            fill_color=QColor(0,0,255),
+            z_value=100
+        ))
+
+        self.graphic_view.view.g_add_item(CircleCenterElement.create_custom_graphics_item(
+
+            center=QPointF(100, 100),
+            edge=QPointF(110, 110),
+            border_color=QColor(255, 0, 0, 255),
+            border_with=1,
+            border_style=Qt.PenStyle.DashDotDotLine,
+            fill_color=QColor(0, 0, 255),
+            z_value=100
+        ))
 
     def mousse_move(self, scene_pos):
         self.graphic_view.view.annotation_manager.update_text("mouse",  f"x : {int(scene_pos.x())} | y = {int(scene_pos.y())}")
+
+
+    def change_tool(self, tool: str):
+        self.graphic_view.view.annotation_manager.update_text("tool",  f"Tool : {tool}")
+
 
     def wheel_move(self):
         var = int(self.graphic_view.view.camera.get_zoom_percent())

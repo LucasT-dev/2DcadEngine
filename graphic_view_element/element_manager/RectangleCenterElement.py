@@ -1,6 +1,6 @@
-from PyQt6.QtCore import QPointF, QRectF
+from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import QPen, QBrush, QColor
-from PyQt6.QtWidgets import QGraphicsRectItem
+from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsItem
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
 
@@ -19,9 +19,42 @@ class RectangleCenterElement(GraphicElementBase):
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(0)
+
+        item.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+        )
+
         return item
 
-    def _make_rect_from_center(self, center: QPointF, edge: QPointF) -> QRectF:
+    @staticmethod
+    def create_custom_graphics_item(first_point: QPointF, second_point: QPointF,
+                                    border_color: QColor, border_with: int,
+                                    border_style: Qt.PenStyle, fill_color: QColor,
+                                    z_value: int = 0,
+                                    flags: QGraphicsItem.GraphicsItemFlag =
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+
+        rect = RectangleCenterElement._make_rect_from_center(first_point, second_point)
+
+        pen = QPen(border_color)
+        pen.setWidth(border_with)
+        pen.setStyle(border_style)
+
+        brush = QBrush(fill_color)
+
+        item = QGraphicsRectItem(rect)
+        item.setPen(pen)
+        item.setBrush(brush)
+        item.setZValue(z_value)
+
+        item.setFlags(flags)
+
+        return item
+
+    @staticmethod
+    def _make_rect_from_center(center: QPointF, edge: QPointF) -> QRectF:
         dx = abs(edge.x() - center.x())
         dy = abs(edge.y() - center.y())
         return QRectF(center.x() - dx, center.y() - dy, 2 * dx, 2 * dy)

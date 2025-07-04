@@ -1,5 +1,7 @@
-from PyQt6.QtCore import QRectF, QPointF
-from PyQt6.QtWidgets import QGraphicsEllipseItem
+from typing import List
+
+from PyQt6.QtCore import QRectF, QPointF, Qt
+from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
 from PyQt6.QtGui import QPen, QColor, QBrush
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
@@ -19,9 +21,44 @@ class CircleCenterElement(GraphicElementBase):
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(0)
+
+        item.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+        )
+
         return item
 
-    def _make_circle_rect_from_center(self, center: QPointF, edge: QPointF) -> QRectF:
+    @staticmethod
+    def create_custom_graphics_item(center: QPointF, edge: QPointF,
+                                    border_color: QColor,
+                                    border_with: int,
+                                    border_style: Qt.PenStyle,
+                                    fill_color: QColor,
+                                    z_value: int=0,
+                                    flags: QGraphicsItem.GraphicsItemFlag =
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+
+        circle = CircleCenterElement._make_circle_rect_from_center(center, edge)
+
+        pen = QPen(border_color)
+        pen.setWidth(border_with)
+        pen.setStyle(border_style)
+
+        brush = QBrush(fill_color)
+
+        item = QGraphicsEllipseItem(circle)
+        item.setPen(pen)
+        item.setBrush(brush)
+        item.setZValue(z_value)
+
+        item.setFlags(flags)
+
+        return item
+
+    @staticmethod
+    def _make_circle_rect_from_center(center: QPointF, edge: QPointF) -> QRectF:
         dx = abs(edge.x() - center.x())
         dy = abs(edge.y() - center.y())
         radius = max(dx, dy)

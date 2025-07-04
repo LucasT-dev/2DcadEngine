@@ -1,5 +1,5 @@
-from PyQt6.QtCore import QRectF
-from PyQt6.QtWidgets import QGraphicsRectItem
+from PyQt6.QtCore import QRectF, QPointF, Qt
+from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsItem
 from PyQt6.QtGui import QPen, QColor, QBrush
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
@@ -19,4 +19,36 @@ class RectangleElement(GraphicElementBase):
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(0)
+
+        item.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+        )
+
+        return item
+
+    @staticmethod
+    def create_custom_graphics_item(first_point: QPointF, second_point: QPointF,
+                                    border_color: QColor, border_with: int,
+                                    border_style: Qt.PenStyle, fill_color: QColor,
+                                    z_value: int = 0,
+                                    flags: QGraphicsItem.GraphicsItemFlag =
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+
+        rect = QRectF(first_point, second_point).normalized()
+
+        pen = QPen(border_color)
+        pen.setWidth(border_with)
+        pen.setStyle(border_style)
+
+        brush = QBrush(fill_color)
+
+        item = QGraphicsRectItem(rect)
+        item.setPen(pen)
+        item.setBrush(brush)
+        item.setZValue(z_value)
+
+        item.setFlags(flags)
+
         return item

@@ -1,6 +1,6 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor
-from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene
+from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem
 
 from draw.CameraManager import Camera
 from draw.CursorManager import CursorManager
@@ -11,6 +11,7 @@ from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
 from graphic_view_element.PreviewManager import PreviewManager
 from graphic_view_element.ElementManager import ElementManager
+from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
 from graphic_view_element.style.StyleElement import StyleElement
 
 
@@ -95,6 +96,9 @@ class GraphicViewContainer(QWidget):
 
 class GraphicView(QGraphicsView):
 
+    # Custom event signal
+    tool_changed = pyqtSignal(str)
+
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
 
@@ -116,11 +120,13 @@ class GraphicView(QGraphicsView):
         self.element_registry = ElementManager()
 
         # Preview
-        self.preview_manager = PreviewManager(scene, self.style_element, self.element_registry)
+        self._preview_manager = PreviewManager(scene, self.style_element, self.element_registry)
         #self.GraphicItem = GraphicItem(scene)
 
 
         self.shortcut_map = {}  # clé Qt.Key → nom d'outil
+
+
 
 
 
@@ -129,27 +135,13 @@ class GraphicView(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
+        self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+
 
     def g_set_render_hit(self, render: QPainter.RenderHint):
-        """
-        Sets a specific render hint for the QPainter instance.
-
-        This method allows enabling or modifying the rendering hints for
-        the current QPainter instance. Rendering hints can optimize
-        rendering for quality, performance, or other specified criteria.
-
-        :param render: A render hint to be applied to the QPainter instance.
-        :type render: QPainter.RenderHint
-        :return: None
-        """
         self.setRenderHint(render)
 
     def g_set_background_color(self, hex_color: str):
-        """
-        Définit la couleur de fond à partir d'une valeur hexadécimale.
-
-        :param hex_color: Couleur au format hexadécimal (ex: '#FF0000' ou '#FF0000FF' avec alpha)
-        """
         self.setBackgroundBrush(QBrush(QColor(hex_color)))
 
     def g_scale(self, sx, sy):
@@ -207,21 +199,89 @@ class GraphicView(QGraphicsView):
     def g_set_tool(self, tool: str):
         self.style_element.set_tool(tool)
 
+        self.emit_tool_changed(tool)
+
+        self._update_selection_mode(tool)
+
     def g_get_tool(self):
         self.style_element.get_tool()
 
     # -------------------- end style method --------------------
 
 
+    # -------------------- start item method --------------
+
+    def g_get_items_selected(self) -> list[QGraphicsItem]:
+        return self.scene().selectedItems()
+
+    def g_get_items(self) -> list[QGraphicsItem]:
+        return self.scene().items()
+
+    def g_change_fill_color_items_selected(self, fill_color: QColor):
+        for item in self.scene().selectedItems():
+            if hasattr(item, "setBrush"):
+                item.setBrush(QBrush(fill_color))
+
+    def g_change_border_color_items_selected(self, border_color: QColor):
+        for item in self.scene().selectedItems():
+            if hasattr(item, "pen"):
+                pen = item.pen()
+                pen.setColor(border_color)
+                item.setPen(pen)
+
+    def g_change_border_width_items_selected(self, width: int):
+        for item in self.scene().selectedItems():
+            if hasattr(item, "pen"):
+                pen = item.pen()
+                pen.setWidth(width)
+                item.setPen(pen)
+
+    def g_change_border_style_items_selected(self, style: Qt.PenStyle):
+        for item in self.scene().selectedItems():
+            if hasattr(item, "pen"):
+                pen = item.pen()
+                pen.setStyle(style)
+                item.setPen(pen)
+
+    def g_set_z_value_items_selected(self, z_value: int | float):
+        selected = self.scene().selectedItems()
+        """
+        if not selected:
+            return"""
+
+        for item in selected:
+            item.setZValue(z_value)
+
+    # -------------------- end item method ----------------
+
+
     # -------------------- start register object preview method-
 
     def g_register_preview_method(self, tool_name: str, preview_class):
-        self.preview_manager.register_tool_preview(tool_name, preview_class)
+        self._preview_manager.register_tool_preview(tool_name, preview_class)
+
+    # Create custom item by user program
+
+    def g_add_item(self, item: GraphicElementBase):
+        self._preview_manager.create_custom_element(item)
+
+    # delete selected item by user program
+
+    def g_remove_selected_item(self):
+
+        for item in self.scene().selectedItems():
+            self.scene().removeItem(item)
+
+    # delete item by user program
+
+    def g_remove_item(self, item: QGraphicsItem):
+        self.scene().removeItem(item)
 
     # -------------------- end register object preview method --
 
 
     # -------------------- start register object view method ---
+
     def g_register_view_element(self, tool_name: str, view_class):
         """Associer une preview à un nom d’outil (Tool ou str)."""
         self.element_registry.register(tool_name, view_class)
@@ -266,6 +326,13 @@ class GraphicView(QGraphicsView):
     def g_get_mouse_state(self):
         return self.mouse_tracker.get_mouse_state()
 
+    # Gestion d'affichage ou non de la zone de selection en fonction de l'outil
+    def _update_selection_mode(self, tool: str):
+        if tool == "Mouse":
+            self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+        else:
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)
+
 
     # -------------------- EVENT --------------------
     def wheelEvent(self, event):
@@ -299,7 +366,7 @@ class GraphicView(QGraphicsView):
         self._update_rulers()
 
         # Création de la preview
-        self.preview_manager.start_preview(self.mapToScene(event.pos()))
+        self._preview_manager.start_preview(self.mapToScene(event.pos()))
 
 
     def mouseReleaseEvent(self, event):
@@ -315,7 +382,7 @@ class GraphicView(QGraphicsView):
         if not self.camera.handle_mouse_release(event):
             super().mouseReleaseEvent(event)
 
-        self.preview_manager.create_item(self.mapToScene(event.pos()))
+        self._preview_manager.create_item(self.mapToScene(event.pos()))
 
 
 
@@ -329,7 +396,7 @@ class GraphicView(QGraphicsView):
         if not self.camera.handle_mouse_move(event):
             super().mouseMoveEvent(event)
 
-        self.preview_manager.update_preview(self.mapToScene(event.pos()))
+        self._preview_manager.update_preview(self.mapToScene(event.pos()))
 
 
 
@@ -374,6 +441,14 @@ class GraphicView(QGraphicsView):
         super().keyPressEvent(event)
 
     # -------------------- EVENT --------------------
+
+    # -------------------- Start custom event -------
+
+    def emit_tool_changed(self, tool_name: str):
+        print(f"[SIGNAL] Changement d'outil : {tool_name}")
+        self.tool_changed.emit(tool_name)
+
+    # -------------------- End custom event ---------
 
     def paintEvent(self, event):
         super().paintEvent(event)

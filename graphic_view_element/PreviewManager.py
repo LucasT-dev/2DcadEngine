@@ -40,6 +40,9 @@ class PreviewManager:
             item.setZValue(1000)
             self.scene.addItem(item)
 
+    def create_custom_element(self, item):
+        self.scene.addItem(item)
+
     def create_item(self, pos: QPointF):
 
         # L'outil na pas de preview associé
