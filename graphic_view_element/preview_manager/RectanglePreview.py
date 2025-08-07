@@ -1,6 +1,5 @@
-from PyQt6.QtGui import QColor, QPen
 from PyQt6.QtWidgets import QGraphicsRectItem
-from PyQt6.QtCore import QRectF, QPointF
+from PyQt6.QtCore import QRectF
 
 from graphic_view_element.preview_manager.PreviewShape import PreviewShape
 
@@ -17,6 +16,3 @@ class RectanglePreview(PreviewShape):
     def update_item(self, start, end):
         rect = QRectF(start, end).normalized()
         self.graphics_item.setRect(rect)
-
-    def create_item(self, start: QPointF, end: QPointF):
-        pass

@@ -1,7 +1,9 @@
+import uuid
 from enum import Enum
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QPen, QBrush
+from PyQt6.QtGui import QColor, QPen, QBrush, QFont
+
 
 class ToolMode(Enum):
     CLICK_CLICK = 1
@@ -13,12 +15,24 @@ class StyleElement:
     def __init__(self):
 
         # Bordure
-        self._border_color: QColor = QColor(0, 255, 0, 255)
+        self._border_color: QColor = QColor(255, 255, 255, 255)
         self._border_width: int = 2
         self._border_style: Qt.PenStyle = Qt.PenStyle.SolidLine
 
         # Remplissage
-        self._fill_color: QColor = QColor(255, 0, 0, 255)  # transparent par défaut
+        self._fill_color: QColor = QColor(0, 0, 0, 0)  # transparent par défaut
+
+        self._z_value = 0
+
+        # Text
+        self._text_color = QColor(255, 255, 255, 255)
+        self._text: str= "Text"
+        self._font = QFont("Arial", 14)
+        self._text_width: int= 10
+
+        # Data
+        self._key: int=0
+        self._value = uuid.uuid4()
 
         self._mode: ToolMode = ToolMode.CLICK_DRAG
         self._tool: str = "Mouse"
@@ -61,6 +75,53 @@ class StyleElement:
 
     def set_border_style(self, border_style: Qt.PenStyle):
         self._border_style = border_style
+
+
+    def get_z_value(self) -> int:
+        return self._z_value
+
+    def set_z_value(self, z: int):
+        self._z_value = z
+
+
+    # Text
+    def get_text_color(self) -> QColor:
+        return self._text_color
+
+    def set_text_color(self, color: QColor):
+        self._text_color = color
+
+    def get_text(self) -> str:
+        return self._text
+
+    def set_text(self, text: str):
+        self._text = text
+
+    def get_font(self) -> QFont:
+        return self._font
+
+    def set_font(self, font: QFont):
+        self._font = font
+
+    def get_text_width(self) -> int:
+        return self._text_width
+
+    def set_width(self, width: int):
+        self._text_width = width
+
+    # Data
+    def get_key(self) -> int:
+        return self._key
+
+    def set_key(self, key: int):
+        self._key = key
+
+
+    def get_value(self):
+        return self._value
+
+    def set_value(self, value):
+        self._value = value
 
 
 

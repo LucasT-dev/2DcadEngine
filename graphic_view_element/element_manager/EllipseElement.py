@@ -1,13 +1,17 @@
+import uuid
+
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
 from PyQt6.QtCore import QRectF, QPointF, Qt
 from PyQt6.QtGui import QPen, QColor, QBrush
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
+from graphic_view_element.resizable_element.CircleResizable import ResizableCircleItem
+from graphic_view_element.resizable_element.EllipseResizable import ResizableEllipseItem
 
 
 class CircleElement(GraphicElementBase):
     def create_graphics_item(self):
-        rect = QRectF(self.start, self.end).normalized()
+        circle = QRectF(self.start, self.end).normalized()
 
         pen = QPen(QColor(self.style.get_border_color()))
         pen.setWidth(self.style.get_border_width())
@@ -15,10 +19,10 @@ class CircleElement(GraphicElementBase):
 
         brush = QBrush(QColor(self.style.get_fill_color()))
 
-        item = QGraphicsEllipseItem(rect)
+        item = ResizableEllipseItem(circle) # QGraphicsEllipseItem(rect)
         item.setPen(pen)
         item.setBrush(brush)
-        item.setZValue(0)
+        item.setZValue(self.style.get_z_value())
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -31,6 +35,8 @@ class CircleElement(GraphicElementBase):
                                     border_color: QColor, border_with: int,
                                     border_style: Qt.PenStyle, fill_color: QColor,
                                     z_value: int=0,
+                                    key: int = 0,
+                                    value: str = uuid.uuid4(),
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -43,11 +49,13 @@ class CircleElement(GraphicElementBase):
 
         brush = QBrush(fill_color)
 
-        item = QGraphicsEllipseItem(circle)
+        item = ResizableEllipseItem(circle)
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(z_value)
 
         item.setFlags(flags)
+
+        item.setData(key, value)
 
         return item

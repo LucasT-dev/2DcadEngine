@@ -1,12 +1,12 @@
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor
+from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QUndoStack, QKeySequence, QAction
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem
 
 from draw.CameraManager import Camera
 from draw.CursorManager import CursorManager
-from draw.Draw import Draw
-from draw.DynamicInformationManager import AnnotationManager
+from draw.AnnotationManager import AnnotationManager
 from draw.GridManager import Grid
+from draw.HistoryManager import RemoveItemCommand
 from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
 from graphic_view_element.PreviewManager import PreviewManager
@@ -98,12 +98,13 @@ class GraphicView(QGraphicsView):
 
     # Custom event signal
     tool_changed = pyqtSignal(str)
+    selection_changed = pyqtSignal(list)
 
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
 
         # Composants métiers
-        self.draw = Draw()
+
         self.grid = Grid(self)
         self.camera = Camera(self)
         self.cursor_manager = CursorManager()
@@ -126,9 +127,7 @@ class GraphicView(QGraphicsView):
 
         self.shortcut_map = {}  # clé Qt.Key → nom d'outil
 
-
-
-
+        self.scene().selectionChanged.connect(self.emit_selection_changed)
 
         # Configuration de base de la vue
         self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
@@ -217,6 +216,17 @@ class GraphicView(QGraphicsView):
     def g_get_items(self) -> list[QGraphicsItem]:
         return self.scene().items()
 
+    def g_get_item_by_data(self, key: int, value) -> QGraphicsItem | None:
+        """Recherche le premier item dont item.data(key) == value"""
+        for item in self.scene().items():
+            if item.data(key) == value:
+                return item
+        return None
+
+    def g_get_items_by_data(self, key: int, value) -> list[QGraphicsItem]:
+        return [item for item in self.scene().items() if item.data(key) == value]
+
+
     def g_change_fill_color_items_selected(self, fill_color: QColor):
         for item in self.scene().selectedItems():
             if hasattr(item, "setBrush"):
@@ -243,14 +253,59 @@ class GraphicView(QGraphicsView):
                 pen.setStyle(style)
                 item.setPen(pen)
 
-    def g_set_z_value_items_selected(self, z_value: int | float):
+    def g_change_z_value_items_selected(self, z_value: int | float):
         selected = self.scene().selectedItems()
-        """
-        if not selected:
-            return"""
 
         for item in selected:
             item.setZValue(z_value)
+
+    def g_up_z_value_items_selected(self):
+        selected = self.scene().selectedItems()
+
+        for item in selected:
+            item.setZValue(item.zValue() + 1)
+
+    def g_down_z_value_items_selected(self):
+        selected = self.scene().selectedItems()
+
+        for item in selected:
+            item.setZValue(item.zValue() - 1)
+
+    def g_send_items_selected_to_front(self):
+        selected = self.scene().selectedItems()
+        if not selected:
+            return
+
+        # Trouver les objets sélectionnables dans la scène
+        selectable_items = [
+            item for item in self.scene().items()
+            if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+        ]
+
+        # Chercher le zValue max parmi les éléments sélectionnables
+        max_z = max((item.zValue() for item in selectable_items), default=0)
+
+        # Appliquer un zValue plus élevé à chaque sélectionné
+        for i, item in enumerate(selected):
+            item.setZValue(max_z + i + 1)  # +i pour garder un ordre relatif
+
+    def g_send_items_selected_to_back(self):
+        selected = self.scene().selectedItems()
+        if not selected:
+            return
+
+        # Tous les éléments sélectionnables dans la scène
+        selectable_items = [
+            item for item in self.scene().items()
+            if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+        ]
+
+        # Le plus petit z-value actuel
+        min_z = min((item.zValue() for item in selectable_items), default=0)
+
+        # Appliquer un z-value plus petit à chaque sélectionné
+        for i, item in enumerate(selected):
+            item.setZValue(min_z - len(selected) + i - 1)
 
     # -------------------- end item method ----------------
 
@@ -264,6 +319,7 @@ class GraphicView(QGraphicsView):
 
     def g_add_item(self, item: GraphicElementBase):
         self._preview_manager.create_custom_element(item)
+        return item
 
     # delete selected item by user program
 
@@ -312,6 +368,42 @@ class GraphicView(QGraphicsView):
 
     # -------------------- end register cursor tool ----------
 
+    # -------------------- start history manager -------------
+
+    def g_set_shortcut_undo_action(self):
+        # Ctrl+Z
+        undo_action = self.scene().undo_stack.createUndoAction(self, "Annuler")
+        undo_action.setShortcut(QKeySequence.StandardKey.Undo)
+        self.addAction(undo_action)
+
+    def g_set_shortcut_redo_action(self):
+        # Ctrl+Y
+        redo_action = self.scene().undo_stack.createRedoAction(self, "Rétablir")
+        redo_action.setShortcut(QKeySequence.StandardKey.Redo)
+        self.addAction(redo_action)
+
+    def g_set_shortcut_delete_item(self):
+        # --- Suppr pour supprimer ---
+        delete_action = QAction("Supprimer", self)
+        delete_action.setShortcut(Qt.Key.Key_Delete)
+        delete_action.triggered.connect(self.delete_selected_items)
+        self.addAction(delete_action)
+
+    def delete_selected_items(self):
+        # Pour tous les items sélectionnés
+        print("deleted")
+        for item in list(self.g_get_items_selected()):
+            print("10")
+            cmd = RemoveItemCommand(self.scene, item)
+            print("11")
+            self.scene().undo_stack.push(cmd)
+
+    def set_undo_limit(self, limit: int):
+
+        self.scene().undo_stack.setUndoLimit(limit)
+
+    # -------------------- end history manager ---------------
+
 
     # -------------------- private method --------------------
 
@@ -356,7 +448,6 @@ class GraphicView(QGraphicsView):
             self.camera.handle_mouse_press(event)  # facultatif
             return  # on ne fait rien d’autre (pas de preview, pas de super())
 
-
         self.mouse_tracker.process_mouse_press(event)
 
         if not self.camera.handle_mouse_press(event):
@@ -383,7 +474,6 @@ class GraphicView(QGraphicsView):
             super().mouseReleaseEvent(event)
 
         self._preview_manager.create_item(self.mapToScene(event.pos()))
-
 
 
     def mouseDoubleClickEvent(self, event):
@@ -447,6 +537,10 @@ class GraphicView(QGraphicsView):
     def emit_tool_changed(self, tool_name: str):
         print(f"[SIGNAL] Changement d'outil : {tool_name}")
         self.tool_changed.emit(tool_name)
+
+    def emit_selection_changed(self):
+        selected = self.scene().selectedItems()
+        self.selection_changed.emit(selected)
 
     # -------------------- End custom event ---------
 

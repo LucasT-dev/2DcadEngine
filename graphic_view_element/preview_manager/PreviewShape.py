@@ -16,6 +16,12 @@ class PreviewShape(ABC):
         self.pen = style.get_pen()
         self.brush = style.get_brush()
 
+        self.font = style.get_font()
+        self.text = style.get_text()
+        self.text_color = style.get_text_color()
+
+        self.text_width = style.get_text_width()
+
         self.graphics_item = None
 
 

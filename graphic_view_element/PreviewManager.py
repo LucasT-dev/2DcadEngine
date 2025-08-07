@@ -1,5 +1,7 @@
 from PyQt6.QtCore import QPointF
 
+from draw.HistoryManager import AddItemCommand
+
 
 class PreviewManager:
 
@@ -41,7 +43,7 @@ class PreviewManager:
             self.scene.addItem(item)
 
     def create_custom_element(self, item):
-        self.scene.addItem(item)
+        return self.scene.addItem(item)
 
     def create_item(self, pos: QPointF):
 
@@ -57,6 +59,11 @@ class PreviewManager:
         )
 
         item = element.create_graphics_item()
+
+        # historisation de la creation de l'item
+        cmd = AddItemCommand(scene=self.scene, item=item, description=f"add item {item.__class__.__name__}")
+        self.scene.undo_stack.push(cmd)
+
         self.scene.addItem(item)
         self.clear_preview()
 

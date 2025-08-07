@@ -1,8 +1,11 @@
+import uuid
+
 from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import QPen, QBrush, QColor
 from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsItem
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
+from graphic_view_element.resizable_element.RectangleResize import ResizableRectangleItem
 
 
 class RectangleCenterElement(GraphicElementBase):
@@ -15,10 +18,10 @@ class RectangleCenterElement(GraphicElementBase):
 
         brush = QBrush(QColor(self.style.get_fill_color()))
 
-        item = QGraphicsRectItem(rect)
+        item = ResizableRectangleItem(rect) #QGraphicsRectItem(rect)
         item.setPen(pen)
         item.setBrush(brush)
-        item.setZValue(0)
+        item.setZValue(self.style.get_z_value())
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -32,6 +35,8 @@ class RectangleCenterElement(GraphicElementBase):
                                     border_color: QColor, border_with: int,
                                     border_style: Qt.PenStyle, fill_color: QColor,
                                     z_value: int = 0,
+                                    key: int = 0,
+                                    value: str = uuid.uuid4(),
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -44,12 +49,16 @@ class RectangleCenterElement(GraphicElementBase):
 
         brush = QBrush(fill_color)
 
-        item = QGraphicsRectItem(rect)
+        item = ResizableRectangleItem(rect)
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(z_value)
 
         item.setFlags(flags)
+
+        item.setData(key, value)
+
+        item.setAcceptHoverEvents(True)
 
         return item
 

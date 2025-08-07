@@ -1,15 +1,16 @@
-from typing import List
+import uuid
 
 from PyQt6.QtCore import QRectF, QPointF, Qt
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
 from PyQt6.QtGui import QPen, QColor, QBrush
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
+from graphic_view_element.resizable_element.CircleResizable import ResizableCircleItem
 
 
 class CircleCenterElement(GraphicElementBase):
     def create_graphics_item(self):
-        rect = self._make_circle_rect_from_center(self.start, self.end)
+        circle = self._make_circle_rect_from_center(self.start, self.end)
 
         pen = QPen(QColor(self.style.get_border_color()))
         pen.setWidth(self.style.get_border_width())
@@ -17,15 +18,17 @@ class CircleCenterElement(GraphicElementBase):
 
         brush = QBrush(QColor(self.style.get_fill_color()))
 
-        item = QGraphicsEllipseItem(rect)
+        item = ResizableCircleItem(circle) # QGraphicsEllipseItem(circle)
         item.setPen(pen)
         item.setBrush(brush)
-        item.setZValue(0)
+        item.setZValue(self.style.get_z_value())
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
         )
+
+        item.setAcceptHoverEvents(True)
 
         return item
 
@@ -36,6 +39,8 @@ class CircleCenterElement(GraphicElementBase):
                                     border_style: Qt.PenStyle,
                                     fill_color: QColor,
                                     z_value: int=0,
+                                    key: int=0,
+                                    value: str= uuid.uuid4(),
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -48,12 +53,14 @@ class CircleCenterElement(GraphicElementBase):
 
         brush = QBrush(fill_color)
 
-        item = QGraphicsEllipseItem(circle)
+        item = ResizableCircleItem(circle) #QGraphicsEllipseItem(circle)
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(z_value)
 
         item.setFlags(flags)
+
+        item.setData(key, value)
 
         return item
 

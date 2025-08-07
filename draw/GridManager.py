@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPen, QColor, QFont, QBrush
-from PyQt6.QtWidgets import QGraphicsTextItem
+from PyQt6.QtWidgets import QGraphicsTextItem, QGraphicsLineItem
 
 
 class Grid:
@@ -73,11 +73,11 @@ class Grid:
         grid_pen.setStyle(line_style)
         grid_pen.setWidth(width)
 
-        self.scene.addLine(
-            start_x, start_y,
-            end_x, end_y,
-            grid_pen
-        )
+        item = QGraphicsLineItem(start_x, start_y, end_x, end_y)
+        item.setPen(grid_pen)
+        item.setZValue(1000)
+
+        self.scene.addItem(item)
 
         if name not in self.grid_name_saved:
             self.grid_name_saved.append(name)
@@ -135,8 +135,14 @@ class Grid:
             self.grid_name_saved.append(name)
 
     def _draw_grid_line(self, x1, y1, x2, y2, pen, name):
-        line = self.scene.addLine(x1, y1, x2, y2, pen)
-        line.setData(1, name)
+
+        item = QGraphicsLineItem(x1,y1, x2, y2)
+        item.setPen(pen)
+        item.setZValue(999)
+        item.setData(1, name)
+
+        self.scene.addItem(item)
+
 
     def draw_point(self, color: QColor, radius: int, interval_x: int = 50, interval_y: int = 50, name: str = "point"):
         """
@@ -182,6 +188,7 @@ class Grid:
                 y -= interval_y
 
     def _draw_one_point(self, x, y, radius, pen, brush, name):
+
         point = self.scene.addEllipse(
             x - radius / 2,
             y - radius / 2,
@@ -191,6 +198,7 @@ class Grid:
             brush
         )
         point.setData(1, name)
+        point.setZValue(998)
 
 
     def clear_grid_by_name(self, name: str):
@@ -208,20 +216,6 @@ class Grid:
     def draw_X_axis(self, color: QColor = QColor("#FF0000"), width: int = 2, name: str = "axis",
                     x_start: float=0, y_start: float =0, axis_length: int = 200,
                     x_label: str =None, font: QFont=QFont("Arial", 8), text_rotate: int=0):
-        """
-        Dessine un repère avec les axes X et Y et leurs labels.
-
-        :param font:
-        :param color: Couleur des axes (rouge par défaut)
-        :param width: Épaisseur des axes (2 par défaut)
-        :param name: Nom identifiant le repère (pour pouvoir le supprimer plus tard)
-        :param x_start:
-        :param y_start:
-        :param axis_length: Longueur des axes en pixels
-        :param x_label: Texte pour l'axe X
-        :param font:
-        :param text_rotate:
-        """
 
         x_start_pos = x_start
         y_start_pos = y_start
@@ -233,10 +227,14 @@ class Grid:
         axis_pen.setWidth(width)
 
         # Dessiner l'axe X (horizontal)
-        x_axis = self.scene.addLine(x_start_pos, y_start_pos,
-                                    x_end_pos, y_end_pos,
-                                    axis_pen)
+        x_axis = QGraphicsLineItem(x_start_pos, y_start_pos, x_end_pos, y_end_pos)
+        x_axis.setPen(axis_pen)
+        x_axis.setZValue(1001)
         x_axis.setData(1, name)
+
+
+        self.scene.addItem(x_axis)
+
 
         # Ajouter les labels si demandé
         if x_label:
@@ -272,15 +270,18 @@ class Grid:
         x_end_pos = x_start
         y_end_pos = y_start + axis_length
 
-        # Créer le style de ligne pour les axes
+
+        # Dessiner l'axe Y (Vertical)
         axis_pen = QPen(color)
         axis_pen.setWidth(width)
 
-        # Dessiner l'axe X (horizontal)
-        x_axis = self.scene.addLine(x_start_pos, y_start_pos,
-                                    x_end_pos, y_end_pos,
-                                    axis_pen)
-        x_axis.setData(1, name)
+        # Dessiner l'axe Y (vertical)
+        y_axis = QGraphicsLineItem(x_start_pos, y_start_pos, x_end_pos, y_end_pos)
+        y_axis.setPen(axis_pen)
+        y_axis.setZValue(1001)
+        y_axis.setData(1, name)
+
+        self.scene.addItem(y_axis)
 
         # Ajouter les labels si demandé
         if y_label:
