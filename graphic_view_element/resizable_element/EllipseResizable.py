@@ -45,10 +45,9 @@ class ResizeHandle(QGraphicsEllipseItem):
 
         parent = self.parentItem()
         if parent:
-            self._old_ellipse = (
-                parent.rect().x(), parent.rect().y(),
-                parent.rect().width(), parent.rect().height()
-            )
+            pos = parent.pos()
+            r = parent.rect()
+            self._old_ellipse = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
         event.accept()
 
     def mouseMoveEvent(self, event):
@@ -62,12 +61,12 @@ class ResizeHandle(QGraphicsEllipseItem):
 
         parent = self.parentItem()
         if parent and parent.isSelected():
-            new_ellipse = (
-                parent.rect().x(), parent.rect().y(),
-                parent.rect().width(), parent.rect().height()
-            )
-            if self._old_ellipse != new_ellipse:
-                cmd = ModifyItemCommand(parent, self._old_ellipse, new_ellipse, "resize ellipse")
+            pos = parent.pos()
+            r = parent.rect()
+            new_circle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+
+            if self._old_ellipse != new_circle:
+                cmd = ModifyItemCommand(parent, self._old_ellipse, new_circle, "resize ellipse")
                 self.scene().undo_stack.push(cmd)
         event.accept()
 
@@ -87,6 +86,25 @@ class ResizableEllipseItem(QGraphicsEllipseItem):
         self.handles = {}
         self._is_resizing = False
         self._init_handles()
+
+        self._old_ellipse = None
+
+    def mousePressEvent(self, event):
+        # on mémorise l'état *dans la scène* avant toute action utilisateur
+        pos = self.pos()
+        r = self.rect()
+        self._old_ellipse = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        pos = self.pos()
+        r = self.rect()
+        new_circle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+        if self._old_ellipse != new_circle:
+            cmd = ModifyItemCommand(self, self._old_ellipse, new_circle, "move ellipse")
+            self.scene().undo_stack.push(cmd)
+        self._old_ellipse = None
+        super().mouseReleaseEvent(event)
 
     def _init_handles(self):
         for pos in self.HANDLE_POSITIONS:

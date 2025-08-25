@@ -1,7 +1,7 @@
 import uuid
 
 from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsItem
+from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtGui import QPen, QColor
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
@@ -24,6 +24,8 @@ class LineElement(GraphicElementBase):
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
         )
+
+        item.setData(self.style.get_key(), self.style.get_value())
 
         return item
 

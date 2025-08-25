@@ -1,17 +1,19 @@
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QUndoStack, QKeySequence, QAction
-from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem
+from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap
+from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
+    QGraphicsTextItem, QGraphicsItemGroup
 
 from draw.CameraManager import Camera
 from draw.CursorManager import CursorManager
 from draw.AnnotationManager import AnnotationManager
 from draw.GridManager import Grid
-from draw.HistoryManager import RemoveItemCommand
+from draw.HistoryManager import RemoveItemCommand, ModifyItemPropertiesCommand, GroupItemsCommand
 from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
 from graphic_view_element.PreviewManager import PreviewManager
 from graphic_view_element.ElementManager import ElementManager
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
+from graphic_view_element.resizable_element.GroupeResize import GroupResize
 from graphic_view_element.style.StyleElement import StyleElement
 
 
@@ -230,46 +232,82 @@ class GraphicView(QGraphicsView):
     def g_change_fill_color_items_selected(self, fill_color: QColor):
         for item in self.scene().selectedItems():
             if hasattr(item, "setBrush"):
+                old_item = item
+
                 item.setBrush(QBrush(fill_color))
+
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
 
     def g_change_border_color_items_selected(self, border_color: QColor):
         for item in self.scene().selectedItems():
             if hasattr(item, "pen"):
+                old_item = item
                 pen = item.pen()
                 pen.setColor(border_color)
                 item.setPen(pen)
 
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
+
     def g_change_border_width_items_selected(self, width: int):
         for item in self.scene().selectedItems():
             if hasattr(item, "pen"):
+                old_item = item
                 pen = item.pen()
                 pen.setWidth(width)
                 item.setPen(pen)
 
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
+
     def g_change_border_style_items_selected(self, style: Qt.PenStyle):
         for item in self.scene().selectedItems():
             if hasattr(item, "pen"):
+                old_item = item
                 pen = item.pen()
                 pen.setStyle(style)
                 item.setPen(pen)
 
-    def g_change_z_value_items_selected(self, z_value: int | float):
-        selected = self.scene().selectedItems()
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
 
-        for item in selected:
+    def g_change_z_value_items_selected(self, z_value: int | float):
+        for item in self.scene().selectedItems():
+            old_item = item
             item.setZValue(z_value)
 
-    def g_up_z_value_items_selected(self):
-        selected = self.scene().selectedItems()
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
 
-        for item in selected:
+    def g_change_image_url_items_selected(self, url: str):
+        for item in self.scene().selectedItems():
+            if isinstance(item, QGraphicsPixmapItem):
+                pixmap = QPixmap(url)
+                if not pixmap.isNull():
+                    old_item = item
+                    item.setPixmap(pixmap)
+
+                    cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                    self.scene().undo_stack.push(cmd)
+                else:
+                    print(f"Failed to load image from URL: {url}")
+
+    def g_up_z_value_items_selected(self):
+        for item in self.scene().selectedItems():
+            old_item = item
             item.setZValue(item.zValue() + 1)
 
-    def g_down_z_value_items_selected(self):
-        selected = self.scene().selectedItems()
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
 
-        for item in selected:
+    def g_down_z_value_items_selected(self):
+        for item in self.scene().selectedItems():
+            old_item = item
             item.setZValue(item.zValue() - 1)
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
 
     def g_send_items_selected_to_front(self):
         selected = self.scene().selectedItems()
@@ -287,7 +325,11 @@ class GraphicView(QGraphicsView):
 
         # Appliquer un zValue plus élevé à chaque sélectionné
         for i, item in enumerate(selected):
+            old_item = item
             item.setZValue(max_z + i + 1)  # +i pour garder un ordre relatif
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
 
     def g_send_items_selected_to_back(self):
         selected = self.scene().selectedItems()
@@ -305,7 +347,87 @@ class GraphicView(QGraphicsView):
 
         # Appliquer un z-value plus petit à chaque sélectionné
         for i, item in enumerate(selected):
+            old_item = item
             item.setZValue(min_z - len(selected) + i - 1)
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
+
+    def g_group_selected_items(self):
+        selected_items = self.scene().selectedItems()
+        if not selected_items:
+            return None
+
+        for item in selected_items:
+            item.setSelected(False)
+
+        # Crée un groupe
+        group = GroupResize(selected_items, self.scene())
+
+        # Options du groupe
+        group.setFlags(
+            group.flags()
+            | QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+            | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+        )
+
+        group.setSelected(True)
+
+        # 5) forcer le repaint
+        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
+        self.scene().update()
+
+        """cmd = GroupItemsCommand(self.scene(), selected_items)
+        self.scene().undo_stack.push(cmd)"""
+
+        return group
+
+    def g_ungroup_items(self, group: QGraphicsItemGroup):
+        items = group.childItems()
+        self.scene().destroyItemGroup(group)  # enlève le groupe
+        for item in items:
+            item.setSelected(True)  # remet les items sélectionnés
+            item.setVisible(True)
+
+        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
+        self.scene().update()
+
+    def g_ungroup_selected_items(self):
+
+        selected_items =  self.scene().selectedItems()
+        if not selected_items:
+            return
+
+        group = selected_items[0]
+        if not isinstance(group, QGraphicsItemGroup):
+            return
+
+        # ⚠️ snapshot AVANT de détruire le groupe
+        items = list(group.childItems())
+        group.setSelected(False)
+
+        # détruire le groupe (réinjecte les enfants dans la scène)
+        self.scene().destroyItemGroup(group)
+
+        # resélection + mise à jour
+        for item in items:
+            item.setSelected(True)
+            item.update()
+
+        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
+        self.scene().update()
+        self.viewport().update()
+
+        print("ungroup 1")
+
+        """cmd = UngroupItemsCommand(self.scene(), group)
+        self.scene().undo_stack.push(cmd)"""
+
+        print("ungroup 2")
+
+    def g_unselect_items(self) :
+        self.scene().clearSelection()
+
 
     # -------------------- end item method ----------------
 
@@ -372,30 +494,35 @@ class GraphicView(QGraphicsView):
 
     def g_set_shortcut_undo_action(self):
         # Ctrl+Z
-        undo_action = self.scene().undo_stack.createUndoAction(self, "Annuler")
+        undo_action = self.scene().undo_stack.createUndoAction(self, "undo")
         undo_action.setShortcut(QKeySequence.StandardKey.Undo)
         self.addAction(undo_action)
 
     def g_set_shortcut_redo_action(self):
         # Ctrl+Y
-        redo_action = self.scene().undo_stack.createRedoAction(self, "Rétablir")
+        redo_action = self.scene().undo_stack.createRedoAction(self, "redo")
         redo_action.setShortcut(QKeySequence.StandardKey.Redo)
         self.addAction(redo_action)
 
+    def g_undo_action(self):
+        undo_action = self.scene().undo_stack.createUndoAction(self, "undo")
+        self.addAction(undo_action)
+
+    def g_redo_action(self):
+        undo_action = self.scene().undo_stack.createRedoAction(self, "redo")
+        self.addAction(undo_action)
+
     def g_set_shortcut_delete_item(self):
         # --- Suppr pour supprimer ---
-        delete_action = QAction("Supprimer", self)
+        delete_action = QAction("delete", self)
         delete_action.setShortcut(Qt.Key.Key_Delete)
         delete_action.triggered.connect(self.delete_selected_items)
         self.addAction(delete_action)
 
     def delete_selected_items(self):
         # Pour tous les items sélectionnés
-        print("deleted")
         for item in list(self.g_get_items_selected()):
-            print("10")
             cmd = RemoveItemCommand(self.scene, item)
-            print("11")
             self.scene().undo_stack.push(cmd)
 
     def set_undo_limit(self, limit: int):
@@ -510,7 +637,9 @@ class GraphicView(QGraphicsView):
 
     def keyPressEvent(self, event):
 
-        print("KEY PRESS")
+        if isinstance(self.scene().focusItem(), QGraphicsTextItem):
+            super().keyPressEvent(event)
+            return
 
         key = event.key()
 

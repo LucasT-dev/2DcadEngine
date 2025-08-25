@@ -34,7 +34,6 @@ class PreviewManager:
             return
 
         self.preview_shape = cls(self.style_element)
-
         self.preview_shape.create_preview_item(self.start_pos, self.start_pos)
 
         item = self.preview_shape.get_item()

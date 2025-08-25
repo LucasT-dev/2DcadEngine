@@ -1,11 +1,10 @@
 import uuid
 
-from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
+from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtCore import QRectF, QPointF, Qt
 from PyQt6.QtGui import QPen, QColor, QBrush
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
-from graphic_view_element.resizable_element.CircleResizable import ResizableCircleItem
 from graphic_view_element.resizable_element.EllipseResizable import ResizableEllipseItem
 
 
@@ -28,6 +27,9 @@ class CircleElement(GraphicElementBase):
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
         )
+
+        item.setData(self.style.get_key(), self.style.get_value())
+
         return item
 
     @staticmethod

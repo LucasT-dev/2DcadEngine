@@ -4,7 +4,7 @@ from PyQt6.QtGui import QColor, QPen, QBrush
 class HandleStyle:
     SIZE = 12
     FILL_COLOR = QColor(255, 255, 255, 0)
-    BORDER_COLOR = QColor(0, 0, 0, 255)
+    BORDER_COLOR = QColor(0, 255, 0, 255)
     HOVER_COLOR = QColor(0, 150, 255)
     BORDER_WIDTH = 1
     _instances = []

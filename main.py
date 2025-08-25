@@ -1,8 +1,7 @@
-from PyQt6.QtCore import QTimer, Qt
-from PyQt6.QtGui import QUndoStack, QKeySequence, QAction
-from PyQt6.QtWidgets import QMainWindow, QGraphicsScene
+from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QUndoStack
+from PyQt6.QtWidgets import QMainWindow
 
-from draw.HistoryManager import RemoveItemCommand
 from scene.GraphicScene import GraphicScene
 from scene.GraphicView import GraphicViewContainer
 

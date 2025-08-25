@@ -36,10 +36,9 @@ class Handle(QGraphicsEllipseItem):
 
         parent = self.parentItem()
         if parent:
-            self._old_line = (
-                parent.line().x1(), parent.line().y1(),
-                parent.line().x2(), parent.line().y2()
-            )
+            line = parent.line()
+            pos = parent.pos()
+            self._old_line = (pos.x(), pos.y(), line.x1(), line.y1(), line.x2(), line.y2())
         event.accept()
 
     def mouseMoveEvent(self, event):
@@ -53,10 +52,10 @@ class Handle(QGraphicsEllipseItem):
 
         parent = self.parentItem()
         if parent and parent.isSelected():
-            new_line = (
-                parent.line().x1(), parent.line().y1(),
-                parent.line().x2(), parent.line().y2()
-            )
+            line = parent.line()
+            pos = parent.pos()
+            new_line = (pos.x(), pos.y(), line.x1(), line.y1(), line.x2(), line.y2())
+
             if self._old_line != new_line:
                 cmd = ModifyItemCommand(parent, self._old_line, new_line, "resize line")
                 self.scene().undo_stack.push(cmd)
@@ -93,6 +92,26 @@ class ResizableLineItem(QGraphicsLineItem):
             handle.setVisible(False)
 
         self._update_handle_positions()
+
+        self._old_line = None
+
+    def mousePressEvent(self, event):
+        line = self.line()
+        pos = self.pos()
+        self._old_line = (pos.x(), pos.y(), line.x1(), line.y1(), line.x2(), line.y2())
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        line = self.line()
+        pos = self.pos()
+        new_line = (pos.x(), pos.y(), line.x1(), line.y1(), line.x2(), line.y2())
+
+        if self._old_line != new_line:
+            cmd = ModifyItemCommand(self, self._old_line, new_line, "move/resize line")
+            self.scene().undo_stack.push(cmd)
+
+        self._old_line = None
+        super().mouseReleaseEvent(event)
 
     def _update_handle_positions(self):
         line = self.line()

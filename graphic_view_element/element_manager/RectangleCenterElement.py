@@ -28,6 +28,8 @@ class RectangleCenterElement(GraphicElementBase):
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
         )
 
+        item.setData(self.style.get_key(), self.style.get_value())
+
         return item
 
     @staticmethod

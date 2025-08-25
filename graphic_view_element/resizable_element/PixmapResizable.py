@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsItem, QGraphicsEllipseItem
-from PyQt6.QtGui import QPen, QBrush, QColor
-from PyQt6.QtCore import Qt, QRectF, QPointF
+from PyQt6.QtCore import QPointF, Qt, QRectF
+from PyQt6.QtGui import QPixmap, QColor, QBrush, QPen
+from PyQt6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsEllipseItem
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
@@ -25,7 +25,7 @@ class Handle(QGraphicsEllipseItem):
         self._start_pos = None
         self._original_pos = None
 
-        self._old_rectangle = None
+        self._old_pixmap = None
 
     def _cursor_for_position(self, pos):
         return {
@@ -40,6 +40,7 @@ class Handle(QGraphicsEllipseItem):
         }.get(pos, Qt.CursorShape.ArrowCursor)
 
     def itemChange(self, change, value):
+
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             parent = self.parentItem()
             if parent and parent.isSelected():
@@ -51,13 +52,16 @@ class Handle(QGraphicsEllipseItem):
         self._original_pos = self.scenePos()
 
         parent = self.parentItem()
+
         if parent:
             pos = parent.pos()
-            r = parent.rect()
-            self._old_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+            pixmap = parent.pixmap()
+            self._old_pixmap = (pos.x(), pos.y(), pixmap.width(), pixmap.height())
+
         event.accept()
 
     def mouseMoveEvent(self, event):
+
         new_pos = self._original_pos + (event.scenePos() - self._start_pos)
 
         parent = self.parentItem()
@@ -72,21 +76,21 @@ class Handle(QGraphicsEllipseItem):
 
         if parent and parent.isSelected():
             pos = parent.pos()
-            r = parent.rect()
-            new_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+            pixmap = parent.pixmap()
+            new_pixmap = (pos.x(), pos.y(), pixmap.width(), pixmap.height())
 
-            if self._old_rectangle != new_rectangle:
-                cmd = ModifyItemCommand(parent, self._old_rectangle, new_rectangle, "resize rectangle")
+            if self._old_pixmap != new_pixmap:
+                cmd = ModifyItemCommand(parent, self._old_pixmap, new_pixmap, "resize pixmap")
                 self.scene().undo_stack.push(cmd)
 
         event.accept()
 
-class ResizableSquareItem(QGraphicsRectItem):
+
+class ResizablePixmapItem(QGraphicsPixmapItem):
     HANDLE_POSITIONS = ["tl", "tr", "bl", "br", "t", "b", "l", "r"]
 
-    def __init__(self, rect: QRectF):
-        super().__init__(rect)
-
+    def __init__(self, pixmap: QPixmap):
+        super().__init__(pixmap)
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -94,30 +98,29 @@ class ResizableSquareItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
 
-        self.handles = {}
+        self._original_pixmap = pixmap
         self._is_resizing = False
+        self.handles = {}
         self._init_handles()
 
-        self._old_rectangle = None
+        self._old_pixmap = None
 
     def mousePressEvent(self, event):
-
         pos = self.pos()
-        r = self.rect()
-        self._old_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+        pixmap = self.pixmap()
+        self._old_pixmap = (pos.x(), pos.y(), pixmap.width(), pixmap.height())
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
-
         pos = self.pos()
-        r = self.rect()
-        new_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+        pixmap = self.pixmap()
+        new_pixmap = (pos.x(), pos.y(), pixmap.width(), pixmap.height())
 
-        if self._old_rectangle != new_rectangle:
-            cmd = ModifyItemCommand(self, self._old_rectangle, new_rectangle, "move rectangle")
+        if self._old_pixmap != new_pixmap:
+            cmd = ModifyItemCommand(self, self._old_pixmap, new_pixmap, "move/resize pixmap")
             self.scene().undo_stack.push(cmd)
 
-        self._old_rectangle = None
+        self._old_pixmap = None
         super().mouseReleaseEvent(event)
 
     def _init_handles(self):
@@ -126,12 +129,15 @@ class ResizableSquareItem(QGraphicsRectItem):
         self._update_handle_positions()
 
     def _update_handle_positions(self):
+
         if self._is_resizing:
             return
 
-        r = self.rect()
+        r = self.boundingRect()
         center_x = r.center().x()
         center_y = r.center().y()
+
+        # ⬅ Bloquer itemChange pendant la mise à jour
 
         self.handles["tl"].setPos(r.topLeft())
         self.handles["tr"].setPos(r.topRight())
@@ -142,45 +148,49 @@ class ResizableSquareItem(QGraphicsRectItem):
         self.handles["l"].setPos(r.left(), center_y)
         self.handles["r"].setPos(r.right(), center_y)
 
+
     def resize_from_handle(self, position: str, new_pos: QPointF):
         if self._is_resizing or not self.isSelected():
             return
 
         self._is_resizing = True
 
-        rect = self.rect()
-        orig = rect.getRect()  # x, y, w, h
+        r = self.boundingRect()
+        if position == "br":
+            r.setBottomRight(new_pos)
+        elif position == "bl":
+            r.setBottomLeft(new_pos)
+        elif position == "tr":
+            r.setTopRight(new_pos)
+        elif position == "tl":
+            r.setTopLeft(new_pos)
+        elif position == "t":
+            r.setTop(new_pos.y())
+        elif position == "b":
+            r.setBottom(new_pos.y())
+        elif position == "l":
+            r.setLeft(new_pos.x())
+        elif position == "r":
+            r.setRight(new_pos.x())
 
-        if position in {"br", "bl", "tr", "tl"}:
-            # On part toujours d'un coin opposé
-            fixed = {
-                "br": rect.topLeft(),
-                "bl": rect.topRight(),
-                "tr": rect.bottomLeft(),
-                "tl": rect.bottomRight(),
-            }[position]
+        r = r.normalized()
 
-            # Calcule dx/dy vers le coin actif
-            dx = new_pos.x() - fixed.x()
-            dy = new_pos.y() - fixed.y()
+        scaled_pixmap = self._original_pixmap.scaled(
+            int(r.width()), int(r.height()),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        self.setPixmap(scaled_pixmap)
 
-            size = max(abs(dx), abs(dy))
-            dx = size if dx >= 0 else -size
-            dy = size if dy >= 0 else -size
+        # Ajuster l'offset uniquement si on tire sur gauche/haut
+        offset_x = self.offset().x()
+        offset_y = self.offset().y()
+        if position in ("tl", "l", "bl"):
+            offset_x = r.left()
+        if position in ("tl", "t", "tr"):
+            offset_y = r.top()
+        self.setOffset(offset_x, offset_y)
 
-            rect = QRectF(fixed, QPointF(fixed.x() + dx, fixed.y() + dy)).normalized()
-
-        elif position in {"t", "b", "l", "r"}:
-            # Pour les bords : fixe le centre
-            center = rect.center()
-            dx = abs(new_pos.x() - center.x())
-            dy = abs(new_pos.y() - center.y())
-            size = max(dx, dy)
-
-            rect = QRectF(center.x() - size, center.y() - size,
-                          2 * size, 2 * size)
-
-        self.setRect(rect.normalized())
         self._update_handle_positions()
         self._is_resizing = False
 
@@ -197,4 +207,4 @@ class ResizableSquareItem(QGraphicsRectItem):
 
     def paint(self, painter, option, widget=None):
         super().paint(painter, option, widget)
-        self._update_handle_positions()  # 🛠 toujours à jour visuellement
+        self._update_handle_positions()

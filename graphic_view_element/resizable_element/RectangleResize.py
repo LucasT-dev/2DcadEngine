@@ -25,7 +25,7 @@ class Handle(QGraphicsEllipseItem):
         self._start_pos = None
         self._original_pos = None
 
-        self._old_rect = None
+        self._old_rectangle = None
 
     def _cursor_for_position(self, pos):
         return {
@@ -52,10 +52,9 @@ class Handle(QGraphicsEllipseItem):
 
         parent = self.parentItem()
         if parent:
-            self._old_rect = (
-                parent.rect().x(), parent.rect().y(),
-                parent.rect().width(), parent.rect().height()
-            )
+            pos = parent.pos()
+            r = parent.rect()
+            self._old_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
         event.accept()
 
     def mouseMoveEvent(self, event):
@@ -70,21 +69,16 @@ class Handle(QGraphicsEllipseItem):
     def mouseReleaseEvent(self, event):
 
         parent = self.parentItem()
-        if parent and parent.isSelected():
-            new_rect = (
-                parent.rect().x(), parent.rect().y(),
-                parent.rect().width(), parent.rect().height()
-            )
-            if self._old_rect != new_rect:
-                print("3")
-                cmd = ModifyItemCommand(parent, self._old_rect, new_rect, "resize rectangle")
-                print("4")
-                print(cmd)
-                print(self.scene())
-                print(self.scene().undo_stack)
 
+        if parent and parent.isSelected():
+            pos = parent.pos()
+            r = parent.rect()
+            new_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+
+            if self._old_rectangle != new_rectangle:
+                cmd = ModifyItemCommand(parent, self._old_rectangle, new_rectangle, "resize rectangle")
                 self.scene().undo_stack.push(cmd)
-                print("5")
+
         event.accept()
 
 class ResizableRectangleItem(QGraphicsRectItem):
@@ -92,6 +86,7 @@ class ResizableRectangleItem(QGraphicsRectItem):
 
     def __init__(self, rect: QRectF):
         super().__init__(rect)
+
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -103,7 +98,32 @@ class ResizableRectangleItem(QGraphicsRectItem):
         self._is_resizing = False
         self._init_handles()
 
+        self._old_rectangle = None
+
+    def mousePressEvent(self, event):
+
+        pos = self.pos()
+        r = self.rect()
+        self._old_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+
+        pos = self.pos()
+        r = self.rect()
+        new_rectangle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+
+        if self._old_rectangle != new_rectangle:
+            cmd = ModifyItemCommand(self, self._old_rectangle, new_rectangle, "move rectangle")
+
+            if self.scene() and hasattr(self.scene(), "undo_stack"):
+                self.scene().undo_stack.push(cmd)
+
+        self._old_rectangle = None
+        super().mouseReleaseEvent(event)
+
     def _init_handles(self):
+
         for pos in self.HANDLE_POSITIONS:
             self.handles[pos] = Handle(self, pos)
         self._update_handle_positions()

@@ -31,6 +31,8 @@ class RectangleElement(GraphicElementBase):
         )
         item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
+        item.setData(self.style.get_key(), self.style.get_value())
+
         item.setAcceptHoverEvents(True)
 
         return item

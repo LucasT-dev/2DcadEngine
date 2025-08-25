@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QGraphicsTextItem, QGraphicsEllipseItem, QGraphicsItem
-from PyQt6.QtGui import QPen, QBrush, QColor, QFont
-from PyQt6.QtCore import Qt, QPointF, QRectF
+from PyQt6.QtGui import QPen, QBrush, QColor
+from PyQt6.QtCore import Qt, QPointF
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
@@ -23,7 +23,8 @@ class Handle(QGraphicsEllipseItem):
 
         self._start_pos = None
         self._original_pos = None
-        self._old_geometry = None  # (x, y, w, h)
+
+        self._old_text = None
 
     def _cursor_for_position(self, pos):
         return {
@@ -44,8 +45,9 @@ class Handle(QGraphicsEllipseItem):
         parent = self.parentItem()
         if parent:
             pos = parent.pos()
-            rect = parent.boundingRect()
-            self._old_geometry = (rect.x(), rect.y(), rect.width(), rect.height())
+            w = parent.textWidth()
+            h = parent.boundingRect().height()
+            self._old_text = (pos.x(), pos.y(), w, h)
 
         event.accept()
 
@@ -59,19 +61,20 @@ class Handle(QGraphicsEllipseItem):
     def mouseReleaseEvent(self, event):
         parent = self.parentItem()
 
-        if parent and parent.isSelected() and self._old_geometry:
+        if parent and parent.isSelected() and self._old_text:
             pos = parent.pos()
-            rect = parent.boundingRect()
-            new_geometry = (pos.x(), pos.y(), rect.width(), rect.height())
+            w = parent.textWidth()
+            h = parent.boundingRect().height()
+            new_text = (pos.x(), pos.y(), w, h)
 
-            if self._old_geometry != new_geometry:
-                cmd = ModifyItemCommand(parent, self._old_geometry, new_geometry, "Resize text box")
+            if self._old_text != new_text:
+                cmd = ModifyItemCommand(parent, self._old_text, new_text, "Resize text box")
                 self.scene().undo_stack.push(cmd)
         event.accept()
 
 
 class ResizableTextItem(QGraphicsTextItem):
-    HANDLE_POSITIONS = ["tl", "tr", "bl", "br", "t", "b", "l", "r"]
+    HANDLE_POSITIONS = ["tl", "tr", "bl", "br", "l", "r"]
 
     def __init__(self, text="", parent=None):
         super().__init__(text, parent)
@@ -92,6 +95,28 @@ class ResizableTextItem(QGraphicsTextItem):
         self.handles = {}
         self._is_resizing = False
         self._init_handles()
+
+        self._old_text = None
+
+    def mousePressEvent(self, event):
+        pos = self.pos()
+        w = self.textWidth()
+        h = self.boundingRect().height()
+        self._old_text = (pos.x(), pos.y(), w, h)
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        pos = self.pos()
+        w = self.textWidth()
+        h = self.boundingRect().height()
+        new_text = (pos.x(), pos.y(), w, h)
+
+        if self._old_text != new_text:
+            cmd = ModifyItemCommand(self, self._old_text, new_text, "move/resize text")
+            self.scene().undo_stack.push(cmd)
+
+        self._old_text = None
+        super().mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         # Active l'édition
@@ -122,15 +147,15 @@ class ResizableTextItem(QGraphicsTextItem):
             return
 
         r = self.boundingRect()
-        center_x = r.center().x()
         center_y = r.center().y()
 
-        self.handles["tl"].setPos(r.topRight())
-        self.handles["tr"].setPos(r.topLeft())
-        self.handles["bl"].setPos(r.bottomRight())
-        self.handles["br"].setPos(r.bottomLeft())
-        self.handles["t"].setPos(center_x, r.top())
-        self.handles["b"].setPos(center_x, r.bottom())
+        # Coins
+        self.handles["tl"].setPos(r.topLeft())
+        self.handles["tr"].setPos(r.topRight())
+        self.handles["bl"].setPos(r.bottomLeft())
+        self.handles["br"].setPos(r.bottomRight())
+
+        # Côtés
         self.handles["l"].setPos(r.left(), center_y)
         self.handles["r"].setPos(r.right(), center_y)
 
@@ -141,29 +166,27 @@ class ResizableTextItem(QGraphicsTextItem):
 
         self._is_resizing = True
 
-        print("resize_from_handle")
-
         rect = self.boundingRect()
         orig_width = rect.width()
-        orig_height = rect.height()
 
-        print(rect)
-        print(orig_width)
-        print(orig_height)
-
-        # On calcule la nouvelle largeur selon le handle
         if position in {"r", "tr", "br"}:
+            # Redimension depuis la droite
             new_width = max(new_pos.x() - rect.x(), 1.0)
+            self.setTextWidth(new_width)
+
         elif position in {"l", "tl", "bl"}:
-            new_width = max(rect.right() - new_pos.x(), 1.0)
+            # Redimension depuis la gauche
+            diff = new_pos.x() - rect.x()
+            new_width = max(orig_width - diff, 1.0)
+            self.setTextWidth(new_width)
+            self.setPos(self.pos() + QPointF(diff, 0))  # décaler à gauche
+
         else:
-            # Pour top/bottom, on garde la largeur actuelle
-            new_width = orig_width
+            # Top et bottom → pas d’effet
+            self._is_resizing = False
+            return
 
-        # ✅ On applique uniquement la largeur
-        self.setTextWidth(new_width)
-
-        # On rafraîchit les handles
+        # Mise à jour des handles
         self._update_handle_positions()
         self._is_resizing = False
 

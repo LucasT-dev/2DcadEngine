@@ -45,10 +45,9 @@ class ResizeHandle(QGraphicsEllipseItem):
 
         parent = self.parentItem()
         if parent:
-            self._old_circle = (
-                parent.rect().x(), parent.rect().y(),
-                parent.rect().width(), parent.rect().height()
-            )
+            pos = parent.pos()
+            r = parent.rect()
+            self._old_circle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
         event.accept()
 
     def mouseMoveEvent(self, event):
@@ -62,10 +61,10 @@ class ResizeHandle(QGraphicsEllipseItem):
 
         parent = self.parentItem()
         if parent and parent.isSelected():
-            new_circle = (
-                parent.rect().x(), parent.rect().y(),
-                parent.rect().width(), parent.rect().height()
-            )
+            pos = parent.pos()
+            r = parent.rect()
+            new_circle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+
             if self._old_circle != new_circle:
                 cmd = ModifyItemCommand(parent, self._old_circle, new_circle, "resize circle")
                 self.scene().undo_stack.push(cmd)
@@ -87,6 +86,26 @@ class ResizableCircleItem(QGraphicsEllipseItem):
         self.handles = {}
         self._is_resizing = False
         self._init_handles()
+
+        # Pour l'historique
+        self._old_circle = None
+
+    def mousePressEvent(self, event):
+        # on mémorise l'état *dans la scène* avant toute action utilisateur
+        pos = self.pos()
+        r = self.rect()
+        self._old_circle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        pos = self.pos()
+        r = self.rect()
+        new_circle = (pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height())
+        if self._old_circle != new_circle:
+            cmd = ModifyItemCommand(self, self._old_circle, new_circle, "move circle")
+            self.scene().undo_stack.push(cmd)
+        self._old_circle = None
+        super().mouseReleaseEvent(event)
 
     def _init_handles(self):
         for pos in self.HANDLE_POSITIONS:
