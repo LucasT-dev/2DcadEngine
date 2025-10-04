@@ -6,12 +6,13 @@ from scene.GraphicScene import GraphicScene
 from scene.GraphicView import GraphicViewContainer
 
 
-class MainWindow(QMainWindow):
+class MainCad(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, configurator=None, show_ruler=True):
         super().__init__()
 
         # --- Pile d'historique ---
+        self._configurator = configurator
         self.undo_stack = QUndoStack(self)
 
         # --- Crée la scène avec Undo intégré ---
@@ -20,14 +21,13 @@ class MainWindow(QMainWindow):
         # Vue avec règles en bas et à droite
         self._graphic_view = GraphicViewContainer(
             self._scene,
-            show_ruler=True,
+            show_ruler=show_ruler,
             ruler_positions={"horizontal": "bottom", "vertical": "left"}
         )
 
         # --- Configuration fenêtre ---
-        self.setWindowTitle("Moteur de dessin 2D")
         self.setCentralWidget(self._graphic_view)
-        self.resize(800, 600)
+        #self.resize(800, 600)
 
         # Appeler initEngine APRES construction complète
         QTimer.singleShot(0, self.g_init_engine)
@@ -51,8 +51,10 @@ class MainWindow(QMainWindow):
         return self.undo_stack
 
     def g_init_engine(self):
-        """
-        Méthode appelée à la fin de l'init pour que l'utilisateur
-        puisse surcharger s’il veut configurer son moteur.
-        """
-        pass
+        """Appel la configuration si un configurateur est passé"""
+        if self._configurator is not None:
+            self._configurator.configure(self)
+
+    # Permet d'obtenir directement le widget principal
+    def create_widget(self):
+        return self._graphic_view

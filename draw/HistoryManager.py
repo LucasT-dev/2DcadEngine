@@ -1,9 +1,8 @@
-from PyQt6.QtCore import QRectF, QCoreApplication, QPointF
-from PyQt6.QtGui import QUndoCommand, QTransform, QBrush, QColor
+from PyQt6.QtCore import QCoreApplication, QPointF
+from PyQt6.QtGui import QUndoCommand, QBrush, QColor
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPixmapItem, QGraphicsTextItem, \
-    QGraphicsLineItem, QGraphicsItem, QGraphicsItemGroup, QGraphicsScene
+    QGraphicsLineItem, QGraphicsItem, QGraphicsScene
 
-from graphic_view_element.resizable_element.GroupeResize import GroupResize
 from graphic_view_element.resizable_element.GroupeResize_3 import GroupResize_3
 
 
@@ -295,7 +294,7 @@ class UngroupItemsCommand(QUndoCommand):
             it.update()
 
         # Recréer le groupe
-        self._group = GroupResize(self._children)
+        self._group = None #GroupResize(self._children)
         self._group.setFlags(
             self._group.flags()
             | QGraphicsItem.GraphicsItemFlag.ItemIsMovable
