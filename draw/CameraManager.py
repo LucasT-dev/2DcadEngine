@@ -22,7 +22,6 @@ class Camera:
     def __init__(self, view):
         super().__init__()
 
-        self._calibrated_dpi = None
         self.view = view
 
         self.config = CameraConfig()
@@ -136,25 +135,6 @@ class Camera:
 
         return False
 
-    def auto_calibrate_dpi_from_scene(self, mm_in_scene=100.0):
-        """
-        Affiche une ligne horizontale dans la scène et mesure sa taille en pixels
-        pour estimer la résolution physique (DPI) de l'écran.
-        """
-        start = self.view.mapFromScene(0, 0)
-        end = self.view.mapFromScene(mm_in_scene, 0)
-        pixels = abs(end.x() - start.x())
-
-        # Calcul du DPI estimé (pixels par mm * 25.4)
-        if pixels == 0:
-            raise ValueError("La scène n'est pas visible ou trop zoomée.")
-
-        pixels_per_mm = pixels / mm_in_scene
-        self._calibrated_dpi = pixels_per_mm * 26.45 #25.40
-
-        #self._calibrated_dpi = 30
-
-        return self._calibrated_dpi
 
     def set_zoom_percent(self, percent: float):
         """
@@ -163,30 +143,23 @@ class Camera:
         if percent <= 0:
             raise ValueError("Zoom percent must be positive")
 
-        dpi = getattr(self, "_calibrated_dpi", self.view.logicalDpiX())
-        pixels_per_mm = dpi / self._calibrated_dpi
+        # Pixels que devrait occuper 1 mm scène à l’écran
+        pixels_per_mm_real = self.view.logicalDpiX() / 25.4
 
-        target_scale = pixels_per_mm * (percent / 100.0)
+        # Facteur de transformation souhaité
+        target_scale = (pixels_per_mm_real) * (percent / 100.0)
+
         self.zoom_to(target_scale)
 
     def get_zoom_percent(self) -> float:
         """
-        Retourne le pourcentage de zoom courant, où 100% = échelle physique réelle.
+        Retourne le pourcentage de zoom courant.
+        100% = 1 unité scène (1 mm) = 1 mm physique.
         """
-        # Facteur de transformation : combien de pixels pour 1 unité scène
         pixels_per_scene_unit = self.view.transform().m11()
+        pixels_per_mm_real = self.view.logicalDpiX() / 25.4
 
-        # DPI calibré ou valeur estimée par défaut
-        dpi = getattr(self, "_calibrated_dpi", self.view.logicalDpiX())
-
-        # Combien de pixels devraient représenter 1 mm en affichage physique
-        pixels_per_mm_real = dpi / 25.4
-
-        # À 100%, on veut 1 unité scène = 1 mm physique
-        # Donc pixels_per_scene_unit doit égaler pixels_per_mm_real
-        percent = (pixels_per_scene_unit / pixels_per_mm_real) * 100.0
-
-        return percent
+        return (pixels_per_scene_unit / pixels_per_mm_real) * 100.0
 
     def handle_mouse_press(self, event) -> bool:
         """Gérer l'événement de clic de souris"""

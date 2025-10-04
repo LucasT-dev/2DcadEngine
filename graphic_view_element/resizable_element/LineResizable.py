@@ -6,13 +6,13 @@ from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsLineIt
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
+from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 class Handle(QGraphicsEllipseItem):
-    SIZE = 8
 
     def __init__(self, parent, endpoint: str):
-        super().__init__(-4, -4, self.SIZE, self.SIZE)
+        super().__init__(-4, -4, HandleStyle.SIZE, HandleStyle.SIZE)
 
         self.setParentItem(parent)
         self.endpoint = endpoint  # "start" ou "end"
@@ -62,25 +62,16 @@ class Handle(QGraphicsEllipseItem):
         event.accept()
 
 
-class ResizableLineItem(QGraphicsLineItem):
-    def __init__(self, x1, y1, x2, y2, scene=None):
+class ResizableLineItem(QGraphicsLineItem, SerializableGraphicsItem):
+    def __init__(self, x1, y1, x2, y2):
         super().__init__(x1, y1, x2, y2)
+
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
-            QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+            #QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges
         )
         self.setAcceptHoverEvents(True)
-
-
-        # Ligne de guidage rattachée à l’item
-        self.guide_line = QGraphicsLineItem(self)
-        guide_pen = QPen(Qt.PenStyle.DashLine)
-        guide_pen.setColor(QColor("white"))
-        guide_pen.setWidth(0)
-        self.guide_line.setPen(guide_pen)
-        self.guide_line.setZValue(999)
-        self.guide_line.setVisible(False)
 
         self.handles = {
             "start": Handle(self, "start"),
@@ -94,6 +85,11 @@ class ResizableLineItem(QGraphicsLineItem):
         self._update_handle_positions()
 
         self._old_line = None
+
+    def boundingRect(self):
+        rect = super().boundingRect()
+        # Élargis le rect pour éviter qu'il soit trop fin
+        return rect.adjusted(-5, -5, 5, 5)
 
     def mousePressEvent(self, event):
         line = self.line()
@@ -144,36 +140,7 @@ class ResizableLineItem(QGraphicsLineItem):
 
         self.setLine(line)
         self._update_handle_positions()
-        self._show_guide(fixed, new_pos)
 
-    def _show_guide(self, fixed_point: QPointF, moving_point: QPointF):
-        if not self.scene():
-            return
-
-        dx = moving_point.x() - fixed_point.x()
-        dy = moving_point.y() - fixed_point.y()
-
-        angle = abs(math.degrees(math.atan2(dy, dx)))
-        scene_rect = self.scene().sceneRect()
-
-        # --- Lignes horizontales ---
-        if angle < 5 or angle > 175:
-            y = fixed_point.y()
-            self.guide_line.setLine(scene_rect.left(), y, scene_rect.right(), y)
-            self.guide_line.setVisible(True)
-
-        # --- Lignes verticales ---
-        elif 85 < angle < 95:
-            x = fixed_point.x()
-            self.guide_line.setLine(x, scene_rect.top(), x, scene_rect.bottom())
-            self.guide_line.setVisible(True)
-
-        else:
-            self.guide_line.setVisible(False)
-
-
-    def clear_guide_line(self):
-        self.guide_line.setVisible(False)
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
@@ -181,11 +148,13 @@ class ResizableLineItem(QGraphicsLineItem):
             for handle in self.handles.values():
                 handle.setVisible(selected)
 
-            if not selected:
-                self.clear_guide_line()
+            self.update()
+            if self.scene():
+                self.scene().update()
 
         return super().itemChange(change, value)
 
     def paint(self, painter, option, widget=None):
+        #self._update_handle_positions()
         super().paint(painter, option, widget)
-        self._update_handle_positions()
+

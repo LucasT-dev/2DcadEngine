@@ -4,13 +4,13 @@ from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsLineIt
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
+from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 class Handle(QGraphicsEllipseItem):
-    SIZE = 8
 
     def __init__(self, parent, endpoint: str):
-        super().__init__(-4, -4, self.SIZE, self.SIZE)
+        super().__init__(-4, -4, HandleStyle.SIZE, HandleStyle.SIZE)
 
         self.setParentItem(parent)
         self.endpoint = endpoint  # "start" ou "end"
@@ -61,8 +61,8 @@ class Handle(QGraphicsEllipseItem):
         event.accept()
 
 
-class ResizableRightLineItem(QGraphicsLineItem):
-    def __init__(self, x1, y1, x2, y2, scene=None):
+class ResizableRightLineItem(QGraphicsLineItem, SerializableGraphicsItem):
+    def __init__(self, x1, y1, x2, y2):
         super().__init__(x1, y1, x2, y2)
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |

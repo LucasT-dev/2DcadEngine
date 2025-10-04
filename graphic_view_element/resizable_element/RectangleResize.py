@@ -4,13 +4,13 @@ from PyQt6.QtCore import Qt, QRectF, QPointF
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
+from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 class Handle(QGraphicsEllipseItem):
-    SIZE = 8
 
     def __init__(self, parent, position: str):
-        super().__init__(-4, -4, self.SIZE, self.SIZE)
+        super().__init__(-4, -4, HandleStyle.SIZE, HandleStyle.SIZE)
         self.setParentItem(parent)
         self.position = position
         self.setBrush(QBrush(QColor(HandleStyle.FILL_COLOR)))
@@ -81,7 +81,7 @@ class Handle(QGraphicsEllipseItem):
 
         event.accept()
 
-class ResizableRectangleItem(QGraphicsRectItem):
+class ResizableRectangleItem(QGraphicsRectItem, SerializableGraphicsItem):
     HANDLE_POSITIONS = ["tl", "tr", "bl", "br", "t", "b", "l", "r"]
 
     def __init__(self, rect: QRectF):

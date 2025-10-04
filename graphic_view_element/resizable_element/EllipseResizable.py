@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, QRectF, QPointF
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
+from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 class ResizeHandle(QGraphicsEllipseItem):
@@ -71,7 +72,7 @@ class ResizeHandle(QGraphicsEllipseItem):
         event.accept()
 
 
-class ResizableEllipseItem(QGraphicsEllipseItem):
+class ResizableEllipseItem(QGraphicsEllipseItem, SerializableGraphicsItem):
     HANDLE_POSITIONS = ["tl", "tr", "bl", "br", "t", "b", "l", "r"]
 
     def __init__(self, rect: QRectF):

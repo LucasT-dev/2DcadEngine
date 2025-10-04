@@ -12,12 +12,14 @@ class ItemInfoFormatter:
             "Type": {self._get_clean_type(item) for item in items},
             "Z-Value": {item.zValue() for item in items},
             "Position": {self._point(item.pos()) for item in items},
-            "Couleur bordure": {self._color_rgb(item.pen().color()) for item in items if hasattr(item, "pen")},
-            "Style bordure": {item.pen().style().name for item in items if hasattr(item, "pen")},
+            "Bordder color": {self._color_rgb(item.pen().color()) for item in items if hasattr(item, "pen")},
+            "Border Style": {item.pen().style().name for item in items if hasattr(item, "pen")},
             "Épaisseur": {item.pen().width() for item in items if hasattr(item, "pen")},
-            "Couleur fond": {self._color_rgb(item.brush().color()) for item in items if hasattr(item, "brush")},
-            "Largeur": self._dimensions(items, "width"),
-            "Hauteur": self._dimensions(items, "height")
+            "Fill color": {self._color_rgb(item.brush().color()) for item in items if hasattr(item, "brush")},
+            "Width": self._dimensions(items, "width"),
+            "Height": self._dimensions(items, "height"),
+            "Rotation": self._rotation(items),
+            "Scale": self._scale(items)
         }
 
         # Recupere les data de(s) l'item(s)
@@ -33,8 +35,6 @@ class ItemInfoFormatter:
             lines.append("<hr><b>Données associées :</b>")
             for key, val_set in data_fields.items():
                 lines.append(self._format_line(f"📎 {key}", val_set))
-
-
 
         return "<br>".join(lines)
 
@@ -68,6 +68,19 @@ class ItemInfoFormatter:
                 elif dim_type == "height":
                     dims.add(abs(line.y2() - line.y1()))
         return dims
+
+    def _rotation(self, items) -> set:
+        dims = set()
+        for item in items:
+                dims.add(abs(item.rotation()))
+        return dims
+
+    def _scale(self, items) -> set:
+        dims = set()
+        for item in items:
+                dims.add(abs(item.scale()))
+        return dims
+
 
     def _format_line(self, label: str, values: set) -> str:
         if not values:

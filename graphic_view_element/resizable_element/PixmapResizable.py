@@ -1,16 +1,17 @@
-from PyQt6.QtCore import QPointF, Qt, QRectF
+from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QPixmap, QColor, QBrush, QPen
 from PyQt6.QtWidgets import QGraphicsItem, QGraphicsPixmapItem, QGraphicsEllipseItem
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
+from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 class Handle(QGraphicsEllipseItem):
-    SIZE = 8
 
     def __init__(self, parent, position: str):
-        super().__init__(-4, -4, self.SIZE, self.SIZE)
+        super().__init__(-4, -4, HandleStyle.SIZE, HandleStyle.SIZE)
+
         self.setParentItem(parent)
         self.position = position
         self.setBrush(QBrush(QColor(HandleStyle.FILL_COLOR)))
@@ -86,7 +87,7 @@ class Handle(QGraphicsEllipseItem):
         event.accept()
 
 
-class ResizablePixmapItem(QGraphicsPixmapItem):
+class ResizablePixmapItem(QGraphicsPixmapItem, SerializableGraphicsItem):
     HANDLE_POSITIONS = ["tl", "tr", "bl", "br", "t", "b", "l", "r"]
 
     def __init__(self, pixmap: QPixmap):

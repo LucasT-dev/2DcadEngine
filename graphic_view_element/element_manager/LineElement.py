@@ -16,7 +16,7 @@ class LineElement(GraphicElementBase):
         pen.setWidth(self.style.get_border_width())
         pen.setStyle(self.style.get_border_style())
 
-        item = ResizableLineItem(self.start.x(), self.start.y(), self.end.x(), self.end.y(), scene=None) # QGraphicsLineItem(self.start.x(), self.start.y(), self.end.x(), self.end.y())
+        item = ResizableLineItem(self.start.x(), self.start.y(), self.end.x(), self.end.y()) # QGraphicsLineItem(self.start.x(), self.start.y(), self.end.x(), self.end.y())
         item.setPen(pen)
         item.setZValue(self.style.get_z_value())
 

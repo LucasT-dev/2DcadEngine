@@ -21,9 +21,9 @@ class HorizontalRuler(QWidget):
 
         self.setFixedHeight(20)
 
-        self.spacing = 50
+        self.spacing = 10
         self.major_tick = 10
-        self.minor_tick = 5
+        self.minor_tick = 2
         self.major_tick_interval = 50
 
     def update_style(self, background=None, tick=None, text=None, font_family=None, font_size=None):
@@ -53,23 +53,21 @@ class HorizontalRuler(QWidget):
         self.update()
 
     def set_unit(self, unit: str):
-
-        print("set unit test")
-
         if unit not in ("px", "mm", "cm"):
             raise ValueError("Unit must be 'px', 'mm' or 'cm'")
         self.unit = unit
         self.update()
 
-        print("set unit test")
-
     def _convert_value(self, scene_value: float) -> float:
+        """Convertit une coordonnée de scène (mm) dans l’unité choisie."""
         if self.unit == "px":
-            return scene_value
+            # scène en mm → px à l'écran
+            pixels_per_mm = self.view.logicalDpiX() / 25.4
+            return scene_value * pixels_per_mm
         elif self.unit == "mm":
-            return (scene_value / self.dpi) * 25.4  # 1 inch = 25.4 mm
+            return scene_value
         elif self.unit == "cm":
-            return (scene_value / self.dpi) * 2.54
+            return scene_value / 10.0
         return scene_value
 
     def paintEvent(self, event):
@@ -77,9 +75,6 @@ class HorizontalRuler(QWidget):
         painter.fillRect(event.rect(), self._background_color)
         painter.setFont(self._font)
         painter.setPen(QPen(self._tick_color))
-
-        # Zoom horizontal
-        scale_x = self.view.transform().m11()
 
         # Zone visible dans la scène (coordonnées réelles)
         scene_x_start = self.view.mapToScene(0, 0).x()
@@ -101,7 +96,6 @@ class HorizontalRuler(QWidget):
 
                     label = f"{self._convert_value(x):.1f}"
                     painter.drawText(int(x_view + 2), self.major_tick + 6, label)
-                    #painter.drawText(int(x_view + 2), self.major_tick + 6, str(x))
 
                     painter.setPen(QPen(self._tick_color))
                 else:
@@ -116,8 +110,6 @@ class VerticalRuler(QWidget):
         super().__init__(parent)
 
         self.view = view
-        #self.setMinimumWidth(30)
-        #self.setMaximumWidth(30)
         self.setFixedWidth(20)
 
         # Configuration basique
@@ -129,9 +121,9 @@ class VerticalRuler(QWidget):
         self.unit = "mm"  # 'px', 'mm', 'cm'
         self.dpi = self.logicalDpiX()  # ou self.view.logicalDpiX() pour précision
 
-        self.spacing = 50
+        self.spacing = 10
         self.major_tick = 10
-        self.minor_tick = 5
+        self.minor_tick = 2
         self.major_tick_interval = 50
 
     def update_style(self, background=None, tick=None, text=None, font_family=None, font_size=None):
@@ -172,12 +164,15 @@ class VerticalRuler(QWidget):
         print("set unit test")
 
     def _convert_value(self, scene_value: float) -> float:
+        """Convertit une coordonnée de scène (mm) dans l’unité choisie."""
         if self.unit == "px":
-            return scene_value
+            # scène en mm → px à l'écran
+            pixels_per_mm = self.view.logicalDpiX() / 25.4
+            return scene_value * pixels_per_mm
         elif self.unit == "mm":
-            return (scene_value / self.dpi) * 25.4  # 1 inch = 25.4 mm
+            return scene_value
         elif self.unit == "cm":
-            return (scene_value / self.dpi) * 2.54
+            return scene_value / 10.0
         return scene_value
 
     def paintEvent(self, event):
@@ -185,9 +180,6 @@ class VerticalRuler(QWidget):
         painter.fillRect(event.rect(), self._background_color)
         painter.setFont(self._font)
         painter.setPen(QPen(self._tick_color))
-
-        # Accès à la transformation (zoom)
-        scale_y = self.view.transform().m22()
 
         # Zone visible dans la scène
         scene_y_start = self.view.mapToScene(0, 0).y()
@@ -206,12 +198,9 @@ class VerticalRuler(QWidget):
                 if y % self.major_tick_interval == 0:
                     painter.drawLine(0, int(y_view), self.major_tick, int(y_view))
                     painter.setPen(QPen(self._text_color))
-                    label = str(y)
 
                     label = f"{self._convert_value(y):.1f}"
                     painter.drawText(self.major_tick - 8, int(y_view - 5), label)
-
-                    #painter.drawText(self.major_tick - 8, int(y_view - 5), label)
 
                     painter.setPen(QPen(self._tick_color))
                 else:

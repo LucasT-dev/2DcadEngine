@@ -2,7 +2,7 @@ from PyQt6.QtGui import QColor, QPen, QBrush
 
 
 class HandleStyle:
-    SIZE = 12
+    SIZE = 8
     FILL_COLOR = QColor(255, 255, 255, 0)
     BORDER_COLOR = QColor(0, 255, 0, 255)
     HOVER_COLOR = QColor(0, 150, 255)
@@ -14,7 +14,7 @@ class HandleStyle:
         cls._instances.append(handle)
 
     @classmethod
-    def apply_style(cls, handle, painter, hover=False):
+    def apply_style(cls, painter, hover=False):
         color = cls.HOVER_COLOR if hover else cls.FILL_COLOR
         brush = QBrush(color)
         pen = QPen(cls.BORDER_COLOR)
@@ -28,5 +28,5 @@ class HandleStyle:
             h.update()
 
     @classmethod
-    def refresh_one(cls, handle, hover=False):
+    def refresh_one(cls, handle):
         handle.update()

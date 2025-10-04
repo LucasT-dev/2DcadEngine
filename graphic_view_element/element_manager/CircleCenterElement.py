@@ -1,7 +1,7 @@
 import uuid
 
 from PyQt6.QtCore import QRectF, QPointF, Qt
-from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
+from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtGui import QPen, QColor, QBrush
 
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
@@ -9,6 +9,20 @@ from graphic_view_element.resizable_element.CircleResizable import ResizableCirc
 
 
 class CircleCenterElement(GraphicElementBase):
+
+    def __init__(self, center, edge, start, end, style, border_color=QColor(0, 0, 0), border_with=1,
+                 border_style=Qt.PenStyle.SolidLine, fill_color=QColor(255, 255, 255), z_value=0, key=0, value=""):
+        super().__init__(start, end, style)
+        self.center = center
+        self.edge = edge
+        self.border_color = border_color
+        self.border_with = border_with
+        self.border_style = border_style
+        self.fill_color = fill_color
+        self.z_value = z_value
+        self.key = key
+        self.value = value
+
     def create_graphics_item(self):
         circle = self._make_circle_rect_from_center(self.start, self.end)
 

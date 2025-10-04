@@ -4,13 +4,14 @@ from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
+from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 class ResizeHandle(QGraphicsEllipseItem):
-    SIZE = 8
 
     def __init__(self, parent, position: str):
-        super().__init__(-4, -4, self.SIZE, self.SIZE)
+        super().__init__(-4, -4, HandleStyle.SIZE, HandleStyle.SIZE)
+
         self.setParentItem(parent)
         self.position = position
         self.setBrush(QBrush(QColor(HandleStyle.FILL_COLOR)))
@@ -71,7 +72,7 @@ class ResizeHandle(QGraphicsEllipseItem):
         event.accept()
 
 
-class ResizableCircleItem(QGraphicsEllipseItem):
+class ResizableCircleItem(QGraphicsEllipseItem, SerializableGraphicsItem):
     HANDLE_POSITIONS = ["tl", "tr", "bl", "br", "t", "b", "l", "r"]
 
     def __init__(self, rect: QRectF):

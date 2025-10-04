@@ -98,7 +98,7 @@ class Grid:
             case "bottom-right":
                 return self.origin["end_x"], self.origin["end_y"]
             case _:
-                return (0, 0)
+                return 0, 0
 
     def draw_grid(self, color: QColor, width: int, interval: int=1, name: str= "grid", line_style: Qt.PenStyle=Qt.PenStyle.SolidLine):
 

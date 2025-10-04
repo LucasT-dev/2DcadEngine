@@ -7,13 +7,12 @@ from draw.CameraManager import Camera
 from draw.CursorManager import CursorManager
 from draw.AnnotationManager import AnnotationManager
 from draw.GridManager import Grid
-from draw.HistoryManager import RemoveItemCommand, ModifyItemPropertiesCommand, GroupItemsCommand
+from draw.HistoryManager import RemoveItemCommand, ModifyItemPropertiesCommand, GroupItemsCommand, UngroupItemsCommand
 from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
 from graphic_view_element.PreviewManager import PreviewManager
 from graphic_view_element.ElementManager import ElementManager
 from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
-from graphic_view_element.resizable_element.GroupeResize import GroupResize
 from graphic_view_element.style.StyleElement import StyleElement
 
 
@@ -173,6 +172,8 @@ class GraphicView(QGraphicsView):
     def g_set_unit(self, unit: str):
         if unit not in ("px", "mm", "cm"):
             raise ValueError("Unit must be 'px', 'mm' or 'cm'")
+
+        print("g_set_unit graphic view")
 
         if hasattr(self, 'rulers'):
             self.rulers["h"].unit = unit
@@ -358,72 +359,28 @@ class GraphicView(QGraphicsView):
         if not selected_items:
             return None
 
-        for item in selected_items:
-            item.setSelected(False)
+        cmd = GroupItemsCommand(self.scene, selected_items=selected_items)
+        self.scene().undo_stack.push(cmd)
+        return None
 
-        # Crée un groupe
-        group = GroupResize(selected_items, self.scene())
+    def g_ungroup_items(self, items):
+        selected_items = items
+        if not selected_items:
+            return None
 
-        # Options du groupe
-        group.setFlags(
-            group.flags()
-            | QGraphicsItem.GraphicsItemFlag.ItemIsMovable
-            | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
-        )
+        # On ne prend que le premier groupe sélectionné
+        group = next((it for it in selected_items if isinstance(it, QGraphicsItemGroup)), None)
+        if not group:
+            return None
 
-        group.setSelected(True)
+        cmd = UngroupItemsCommand(self.scene, group)
+        self.scene().undo_stack.push(cmd)
 
-        # 5) forcer le repaint
-        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
-        self.scene().update()
-
-        """cmd = GroupItemsCommand(self.scene(), selected_items)
-        self.scene().undo_stack.push(cmd)"""
-
-        return group
-
-    def g_ungroup_items(self, group: QGraphicsItemGroup):
-        items = group.childItems()
-        self.scene().destroyItemGroup(group)  # enlève le groupe
-        for item in items:
-            item.setSelected(True)  # remet les items sélectionnés
-            item.setVisible(True)
-
-        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
-        self.scene().update()
+        return None
 
     def g_ungroup_selected_items(self):
+        return self.g_ungroup_items(self.scene().selectedItems())
 
-        selected_items =  self.scene().selectedItems()
-        if not selected_items:
-            return
-
-        group = selected_items[0]
-        if not isinstance(group, QGraphicsItemGroup):
-            return
-
-        # ⚠️ snapshot AVANT de détruire le groupe
-        items = list(group.childItems())
-        group.setSelected(False)
-
-        # détruire le groupe (réinjecte les enfants dans la scène)
-        self.scene().destroyItemGroup(group)
-
-        # resélection + mise à jour
-        for item in items:
-            item.setSelected(True)
-            item.update()
-
-        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
-        self.scene().update()
-        self.viewport().update()
-
-        print("ungroup 1")
-
-        """cmd = UngroupItemsCommand(self.scene(), group)
-        self.scene().undo_stack.push(cmd)"""
-
-        print("ungroup 2")
 
     def g_unselect_items(self) :
         self.scene().clearSelection()

@@ -1,7 +1,10 @@
-from PyQt6.QtCore import QRectF
-from PyQt6.QtGui import QUndoCommand, QTransform
+from PyQt6.QtCore import QRectF, QCoreApplication, QPointF
+from PyQt6.QtGui import QUndoCommand, QTransform, QBrush, QColor
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPixmapItem, QGraphicsTextItem, \
-    QGraphicsLineItem, QGraphicsItem, QGraphicsItemGroup
+    QGraphicsLineItem, QGraphicsItem, QGraphicsItemGroup, QGraphicsScene
+
+from graphic_view_element.resizable_element.GroupeResize import GroupResize
+from graphic_view_element.resizable_element.GroupeResize_3 import GroupResize_3
 
 
 class AddItemCommand(QUndoCommand):
@@ -75,9 +78,7 @@ class ModifyItemCommand(QUndoCommand):
         - Pixmap : (pos_x, pos_y, width, height)
         - Text : (pos_x, pos_y, width, height)
         """
-        print("apply geometry")
-        print(self.item)
-        print(type(self.item))
+
         if isinstance(self.item, QGraphicsLineItem):
             x, y, x1, y1, x2, y2 = geometry
             self.item.setPos(x, y)
@@ -100,49 +101,6 @@ class ModifyItemCommand(QUndoCommand):
             pos_x, pos_y, width, height = geometry
             self.item.setPos(pos_x, pos_y)
             self.item.setTextWidth(max(width, 1.0))
-
-
-
-        elif isinstance(self.item, QGraphicsItemGroup):
-
-            print("UNDO/REDO group")
-
-            x, y, w, h = geometry
-
-            target = QRectF(x, y, w, h)
-
-            self.set_group_scene_rect(self.item, target)
-
-
-
-    def set_group_scene_rect(self, group: QGraphicsItemGroup, target: QRectF):
-        """
-        Applique une transform absolue au groupe telle que son rect englobant (en scène)
-        devienne exactement `target`.
-        """
-        rL = group.childrenBoundingRect()
-        if rL.isEmpty():
-            return
-
-        sx = target.width() / rL.width() if rL.width() > 0 else 1.0
-        sy = target.height() / rL.height() if rL.height() > 0 else 1.0
-
-        # Transform voulue en scène
-        S = QTransform()
-        S.translate(target.x(), target.y())
-        S.scale(sx, sy)
-        S.translate(-rL.x(), -rL.y())
-
-        # Si le groupe a un parent, il faut compenser son transform
-        parent = group.parentItem()
-        P = parent.sceneTransform() if parent else QTransform()
-        ok, P_inv = P.inverted()
-        if not ok:
-            P_inv = QTransform()
-
-        T_local = P_inv * S
-        group.setTransform(T_local, False)  # False = remplace la transform
-
 
     def details(self):
         """Retourne une chaîne décrivant l’état avant/après pour l’historique"""
@@ -238,55 +196,146 @@ class ModifyItemPropertiesCommand(QUndoCommand):
 
 
 class GroupItemsCommand(QUndoCommand):
-    def __init__(self, scene, items, description="Group items"):
+
+    def __init__(self, scene, description="Group items", selected_items = None):
         super().__init__(description)
         self.scene = scene
-        self.items = items
-        self.group = None
+        self._group = None
+        self.selected_items = selected_items or []
+        self._original_positions = {}
 
     def redo(self):
-        if not self.items:
+        if not self.selected_items:
             return
 
-        # Créer le groupe si pas déjà fait
-        if self.group is None:
-            self.group = self.scene.createItemGroup(self.items)
+        # Stocke les positions originales
+        for item in self.selected_items:
+            self._original_positions[item] = item.scenePos()
 
-            self.group.setFlags(
-                QGraphicsItem.GraphicsItemFlag.ItemIsMovable
-                | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
-            )
+        # Calcule le centre des items sélectionnés
+        center = QPointF()
+        for item in self.selected_items:
+            center += item.scenePos()
+        center /= len(self.selected_items)
 
-        else:
-            # re-grouper après undo
-            self.group = self.scene.createItemGroup(self.items)
+        # Crée le groupe
+        self._group = GroupResize_3()
+        self._group.setPos(center)
+        self.scene().addItem(self._group)
 
-        self.group.setSelected(True)
+        # Ajoute les items au groupe
+        for item in self.selected_items:
+            self._group.addToGroup(item)
 
-        # masquer handles individuels
-        for item in self.items:
-            if hasattr(item, "handles"):
-                for h in item.handles.values():
-                    h.setVisible(False)
-
-        self.scene.invalidate(self.scene.sceneRect())
-        self.scene.update()
+        # Sélectionne le groupe
+        self._group.setSelected(True)
+        self.scene().update()
 
     def undo(self):
-        if not self.group:
+        if not self._group:
             return
 
-        self.group.setSelected(False)
+        # Dissout le groupe
+        for item in self._group._items:
+            item.setParentItem(None)
+            item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+            if item in self._original_positions:
+                item.setPos(self._original_positions[item])
+            self.scene().addItem(item)
 
-        items = list(self.group.childItems())
-        self.scene.destroyItemGroup(self.group)
+        # Supprime le groupe
+        self.scene().removeItem(self._group)
+        self.scene().update()
 
-        for item in items:
-            item.setSelected(True)
 
-            item.update()
+class UngroupItemsCommand(QUndoCommand):
+    def __init__(self, scene, group, description="Ungroup items"):
+        super().__init__(description)
+        self.scene = scene
+        self._group = group
+        self._children = list(group.childItems())  # on mémorise les enfants pour pouvoir refaire le regroupement
 
-        self.scene.invalidate(self.scene.sceneRect())
-        self.scene.update()
+        print(self._group)
 
+    def redo(self):
+        """Dissocie le groupe"""
+        if not self._group:
+            return
+
+        # Désactiver sélection/déplacement du groupe
+        self._group.setSelected(False)
+        self._group.setFlags(QGraphicsItem.GraphicsItemFlag(0))
+
+        # Dissocier le groupe
+        self.scene().destroyItemGroup(self._group)
+
+        # Réactiver la sélection et handles des enfants
+        for it in self._children:
+            it.setSelected(True)
+            it.setVisible(True)
+            it.update()
+
+        self._group = None
+
+        # Rafraîchissement
+        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
+        self.scene().update()
+        for v in self.scene().views():
+            v.viewport().update()
+
+    def undo(self):
+        """Recrée le groupe avec les enfants d'origine"""
+        if not self._children:
+            return
+
+        # Masquer la sélection/handles des enfants
+        for it in self._children:
+            it.setSelected(False)
+            it.setVisible(False)
+            it.update()
+
+        # Recréer le groupe
+        self._group = GroupResize(self._children)
+        self._group.setFlags(
+            self._group.flags()
+            | QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+            | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+        )
+        self._group.setSelected(True)
+
+        # Rafraîchissement
+        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
+        self.scene().update()
+        for v in self.scene().views():
+            v.viewport().update()
+
+
+
+def flash_dummy(scene, pos):
+
+    print("dummy 2")
+
+    dummy = QGraphicsRectItem(0, 0, 1, 1)
+    print("dummy 3")
+    dummy.setBrush(QBrush(QColor(0,0,0,0)))
+    print("dummy 4")
+    #dummy.setPos(pos)
+
+    print("add dummmy")
+
+    scene.addItem(dummy)
+
+    print("delete dummmy")
+    scene.removeItem(dummy)
+
+    print("ok dummmy")
+    # nettoyage
+    try:
+        del dummy
+    except Exception:
+        pass
+    scene.update()
+    for v in scene.views():
+        v.viewport().update()
+    QCoreApplication.processEvents()
 
