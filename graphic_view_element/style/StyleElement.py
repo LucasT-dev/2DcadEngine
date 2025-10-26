@@ -26,12 +26,12 @@ class StyleElement:
 
         # Text
         self._text_color = QColor(255, 255, 255, 255)
-        self._text: str= "Text"
+        self._text: str = "Text"
         self._font = QFont("Arial", 14)
-        self._text_width: int= 10
+        self._text_width: int = 10
 
         # Data
-        self._key: int=0
+        self._key: int = 0
         self._value = uuid.uuid4()
 
         self._mode: ToolMode = ToolMode.CLICK_DRAG

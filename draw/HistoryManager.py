@@ -1,9 +1,9 @@
-from PyQt6.QtCore import QCoreApplication, QPointF
-from PyQt6.QtGui import QUndoCommand, QBrush, QColor
+from PyQt6.QtCore import QPointF
+from PyQt6.QtGui import QUndoCommand
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPixmapItem, QGraphicsTextItem, \
-    QGraphicsLineItem, QGraphicsItem, QGraphicsScene
+    QGraphicsLineItem, QGraphicsItem
 
-from graphic_view_element.resizable_element.GroupeResize_3 import GroupResize_3
+from graphic_view_element._old.resizable_element.GroupeResize_3 import GroupResize_3
 
 
 class AddItemCommand(QUndoCommand):
@@ -57,7 +57,7 @@ class RemoveItemCommand(QUndoCommand):
 
 
 class ModifyItemCommand(QUndoCommand):
-    def __init__(self, item, old_geometry, new_geometry, description="Modifier élément"):
+    def __init__(self, item, old_geometry, new_geometry, description="modify item"):
         super().__init__(description)
         self.item = item
         self.old_geometry = old_geometry
@@ -65,9 +65,11 @@ class ModifyItemCommand(QUndoCommand):
 
     def undo(self):
         self.apply_geometry(self.old_geometry)
+        self.item.update_handles_position()
 
     def redo(self):
         self.apply_geometry(self.new_geometry)
+        self.item.update_handles_position()
 
     def apply_geometry(self, geometry):
         """
@@ -234,107 +236,79 @@ class GroupItemsCommand(QUndoCommand):
         if not self._group:
             return
 
-        # Dissout le groupe
-        for item in self._group._items:
-            item.setParentItem(None)
-            item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-            if item in self._original_positions:
-                item.setPos(self._original_positions[item])
-            self.scene().addItem(item)
+        group_items = self._group._items.copy()
 
         # Supprime le groupe
         self.scene().removeItem(self._group)
+
+        # Restaure les items à leur position d'origine (dans la scène)
+        for item in group_items:
+            self.scene().addItem(item)
+            item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+            item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+            item.setSelected(True)
+
         self.scene().update()
 
 
 class UngroupItemsCommand(QUndoCommand):
-    def __init__(self, scene, group, description="Ungroup items"):
+    def __init__(self, scene, group_item, description="Ungroup items"):
+        """
+        :param scene: la QGraphicsScene sur laquelle on agit
+        :param group_item: l'objet groupe à décomposer
+        """
         super().__init__(description)
         self.scene = scene
-        self._group = group
-        self._children = list(group.childItems())  # on mémorise les enfants pour pouvoir refaire le regroupement
-
-        print(self._group)
+        self._group = group_item
+        self._items = []
+        self._original_positions = {}
 
     def redo(self):
-        """Dissocie le groupe"""
+        """Dégroupe les items du groupe et les remet dans la scène"""
         if not self._group:
             return
 
-        # Désactiver sélection/déplacement du groupe
+        # Sauvegarde des items et de leur position dans le groupe
+        self._items = list(self._group.childItems())
+        self._original_positions.clear()
         self._group.setSelected(False)
-        self._group.setFlags(QGraphicsItem.GraphicsItemFlag(0))
 
-        # Dissocier le groupe
-        self.scene().destroyItemGroup(self._group)
+        for item in self._items:
+            # Position absolue dans la scène
+            scene_pos = self._group.mapToScene(item.pos())
+            self._original_positions[item] = scene_pos
 
-        # Réactiver la sélection et handles des enfants
-        for it in self._children:
-            it.setSelected(True)
-            it.setVisible(True)
-            it.update()
+        # Retire le groupe de la scène
+        self.scene().removeItem(self._group)
 
-        self._group = None
+        # Réajoute les items indépendamment
+        for item in self._items:
+            item.setParentItem(None)
+            item.setPos(self._original_positions[item])
+            item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+            item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+            item.setSelected(True)
+            self.scene().addItem(item)
 
-        # Rafraîchissement
-        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
         self.scene().update()
-        for v in self.scene().views():
-            v.viewport().update()
 
     def undo(self):
-        """Recrée le groupe avec les enfants d'origine"""
-        if not self._children:
+        """Rétablit le groupe et remet les items dedans"""
+        if not self._items:
             return
 
-        # Masquer la sélection/handles des enfants
-        for it in self._children:
-            it.setSelected(False)
-            it.setVisible(False)
-            it.update()
+        # Recrée un groupe à la position initiale
+        new_group = type(self._group)()  # suppose que ton GroupResize_3() est la classe du groupe
+        new_group.setPos(self._group.scenePos())
+        self.scene().addItem(new_group)
 
-        # Recréer le groupe
-        self._group = None #GroupResize(self._children)
-        self._group.setFlags(
-            self._group.flags()
-            | QGraphicsItem.GraphicsItemFlag.ItemIsMovable
-            | QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
-        )
-        self._group.setSelected(True)
+        # Réintègre les items
+        for item in self._items:
+            new_group.addToGroup(item)
 
-        # Rafraîchissement
-        self.scene().invalidate(self.scene().sceneRect(), QGraphicsScene.SceneLayer.AllLayers)
+        # Restaure l'état
+        new_group.setSelected(True)
+        self._group = new_group
         self.scene().update()
-        for v in self.scene().views():
-            v.viewport().update()
 
-
-
-def flash_dummy(scene, pos):
-
-    print("dummy 2")
-
-    dummy = QGraphicsRectItem(0, 0, 1, 1)
-    print("dummy 3")
-    dummy.setBrush(QBrush(QColor(0,0,0,0)))
-    print("dummy 4")
-    #dummy.setPos(pos)
-
-    print("add dummmy")
-
-    scene.addItem(dummy)
-
-    print("delete dummmy")
-    scene.removeItem(dummy)
-
-    print("ok dummmy")
-    # nettoyage
-    try:
-        del dummy
-    except Exception:
-        pass
-    scene.update()
-    for v in scene.views():
-        v.viewport().update()
-    QCoreApplication.processEvents()
 

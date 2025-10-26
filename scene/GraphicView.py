@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
-    QGraphicsTextItem, QGraphicsItemGroup
+    QGraphicsTextItem
 
 from draw.CameraManager import Camera
 from draw.CursorManager import CursorManager
@@ -10,9 +10,9 @@ from draw.GridManager import Grid
 from draw.HistoryManager import RemoveItemCommand, ModifyItemPropertiesCommand, GroupItemsCommand, UngroupItemsCommand
 from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
-from graphic_view_element.PreviewManager import PreviewManager
-from graphic_view_element.ElementManager import ElementManager
-from graphic_view_element.element_manager.GraphicElementBase import GraphicElementBase
+from graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
+from graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject, ElementObject, \
+    SerialisationObject, PreviewObject
 from graphic_view_element.style.StyleElement import StyleElement
 
 
@@ -106,6 +106,7 @@ class GraphicView(QGraphicsView):
 
         # Composants métiers
 
+        self.first_point = None
         self.grid = Grid(self)
         self.camera = Camera(self)
         self.cursor_manager = CursorManager()
@@ -118,15 +119,8 @@ class GraphicView(QGraphicsView):
         # Element style
         self.style_element = StyleElement()
 
-        # Creation des element
-        self.element_registry = ElementManager()
-
-        # Preview
-        self._preview_manager = PreviewManager(scene, self.style_element, self.element_registry)
-        #self.GraphicItem = GraphicItem(scene)
-
-
-        self.shortcut_map = {}  # clé Qt.Key → nom d'outil
+        # Element manager - Gestion des elements, preview, serialisation, resize
+        self.element_manager = GraphicElementManager()
 
         self.scene().selectionChanged.connect(self.emit_selection_changed)
 
@@ -202,11 +196,10 @@ class GraphicView(QGraphicsView):
         self.style_element.set_tool(tool)
 
         self.emit_tool_changed(tool)
-
         self._update_selection_mode(tool)
 
-    def g_get_tool(self):
-        self.style_element.get_tool()
+    def g_get_tool(self) -> str:
+        return self.style_element.get_tool()
 
     # -------------------- end style method --------------------
 
@@ -364,17 +357,22 @@ class GraphicView(QGraphicsView):
         return None
 
     def g_ungroup_items(self, items):
+        print("ungroupe 2")
         selected_items = items
         if not selected_items:
             return None
 
+        print(items)
         # On ne prend que le premier groupe sélectionné
-        group = next((it for it in selected_items if isinstance(it, QGraphicsItemGroup)), None)
+        group = next((it for it in selected_items if isinstance(it, QGraphicsItem)), None)
         if not group:
+            print("return")
             return None
 
         cmd = UngroupItemsCommand(self.scene, group)
         self.scene().undo_stack.push(cmd)
+
+        print("push ok")
 
         return None
 
@@ -391,24 +389,22 @@ class GraphicView(QGraphicsView):
 
     # -------------------- start register object preview method-
 
-    def g_register_preview_method(self, tool_name: str, preview_class):
-        self._preview_manager.register_tool_preview(tool_name, preview_class)
 
     # Create custom item by user program
 
-    def g_add_item(self, item: GraphicElementBase):
-        self._preview_manager.create_custom_element(item)
-        return item
+    def g_add_item(self, name: str, **kwargs):
+        """Ajoute un élément personnalisé à la scène."""
+
+        item = self.element_manager.get_element(name).element.create_custom_graphics_item(**kwargs)
+        self.scene().addItem(item)
 
     # delete selected item by user program
-
     def g_remove_selected_item(self):
 
         for item in self.scene().selectedItems():
             self.scene().removeItem(item)
 
     # delete item by user program
-
     def g_remove_item(self, item: QGraphicsItem):
         self.scene().removeItem(item)
 
@@ -417,29 +413,39 @@ class GraphicView(QGraphicsView):
 
     # -------------------- start register object view method ---
 
-    def g_register_view_element(self, tool_name: str, view_class):
+    def g_register_element(self, element_name: str, element_class: type[ElementObject],
+                           serialisation_class: SerialisationObject, preview_class: type[PreviewObject]):
         """Associer une preview à un nom d’outil (Tool ou str)."""
-        self.element_registry.register(tool_name, view_class)
+        # Instancier preview_class avec self.style_element
+        preview_instance = preview_class(style=self.style_element)
+        element_instance = element_class(style=self.style_element)
+
+        self.element_manager.register_element(name=element_name,
+                                              element=GraphicElementObject(name=element_name,
+                                                                            element_class=element_instance,
+                                                                            serialisation_class=serialisation_class,
+                                                                            preview_class=preview_instance,
+                                                                            style=self.style_element))
 
     # -------------------- end register object view method -----
 
 
     # -------------------- start register shortcut tool --------
 
-    def g_register_shortcut(self, qt_key: Qt.Key, tool_name: str):
+    def g_register_shortcut(self, name: str, key: Qt.Key):
         """Associe une touche Qt à un nom d’outil (ex: Qt.Key_L → 'line')"""
-        self.shortcut_map[qt_key] = tool_name
-        print(f"[RACCOURCI] {qt_key.name} → {tool_name}")
+        self.element_manager.add_shortcut(name=name, shortcut=key)
+        print(f"[RACCOURCI] {key.name} → {name}")
 
     # -------------------- end register shortcut tool ----------
 
 
     # -------------------- start register cursor tool --------
 
-    def g_register_cursor(self, tool_name: str, cursor: Qt.CursorShape | QCursor):
-        """Associe une touche Qt à un nom d’outil (ex: Qt.Key_L → 'line')"""
-        self.cursor_manager.register_tool(tool_name, cursor)
-        print(f"[Cursor register] {tool_name} → {cursor.name}")
+    def g_register_cursor(self, name: str, cursor: Qt.CursorShape | QCursor):
+        """Associe un cursor à un nom d’outil"""
+        self.element_manager.add_cursor(name=name, cursor=cursor)
+        print(f"[Cursor register] {name} → {cursor.name}")
 
     def g_set_cursor(self, cursor: Qt.CursorShape | QCursor):
         self.setCursor(cursor)
@@ -520,17 +526,14 @@ class GraphicView(QGraphicsView):
         # mise a jour des rulers
         self._update_rulers()
 
-        print(self.camera.get_current_zoom())
-
 
     def mousePressEvent(self, event):
 
         # Ignorer si clic molette
         if event.button() == Qt.MouseButton.MiddleButton:
-            # Tu peux laisser passer le mouvement caméra ici si tu veux :
             self.mouse_tracker.process_mouse_press(event)
             self.camera.handle_mouse_press(event)  # facultatif
-            return  # on ne fait rien d’autre (pas de preview, pas de super())
+            return
 
         self.mouse_tracker.process_mouse_press(event)
 
@@ -541,7 +544,10 @@ class GraphicView(QGraphicsView):
         self._update_rulers()
 
         # Création de la preview
-        self._preview_manager.start_preview(self.mapToScene(event.pos()))
+        if self.element_manager.has_preview(self.g_get_tool()):
+            self.first_point = self.mapToScene(event.pos())
+            self.element_manager.get_element(self.g_get_tool()).get_preview().create_preview_item(self.mapToScene(event.pos()), self.mapToScene(event.pos()))
+            self.scene().addItem(self.element_manager.get_element(self.g_get_tool()).get_preview().get_item())
 
 
     def mouseReleaseEvent(self, event):
@@ -557,8 +563,10 @@ class GraphicView(QGraphicsView):
         if not self.camera.handle_mouse_release(event):
             super().mouseReleaseEvent(event)
 
-        self._preview_manager.create_item(self.mapToScene(event.pos()))
-
+        if self.element_manager.has_preview(self.g_get_tool()):
+            self.g_remove_item(self.element_manager.get_element(self.g_get_tool()).get_preview().get_item())
+            self.scene().addItem(self.element_manager.get_element(self.g_get_tool()).element.create_graphics_item(self.first_point, self.mapToScene(event.pos())))
+            self.first_point = None
 
     def mouseDoubleClickEvent(self, event):
         self.mouse_tracker.process_mouse_double_click(event)
@@ -570,10 +578,8 @@ class GraphicView(QGraphicsView):
         if not self.camera.handle_mouse_move(event):
             super().mouseMoveEvent(event)
 
-        self._preview_manager.update_preview(self.mapToScene(event.pos()))
-
-
-
+        if self.element_manager.has_preview(self.g_get_tool()) and self.first_point is not None:
+            self.element_manager.get_element(self.g_get_tool()).get_preview().update_item(self.first_point, self.mapToScene(event.pos()))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -592,6 +598,7 @@ class GraphicView(QGraphicsView):
         self._update_rulers()
 
 
+    # @deprecated
     def keyPressEvent(self, event):
 
         if isinstance(self.scene().focusItem(), QGraphicsTextItem):
@@ -600,19 +607,16 @@ class GraphicView(QGraphicsView):
 
         key = event.key()
 
-        if key in self.shortcut_map:
-            tool = self.shortcut_map[key]
-            self.g_set_tool(tool)
-            print(f"[TOOL] Activation de l'outil '{tool}' via touche : {key}")
-            event.accept()
+        for item in self.element_manager.get_all_items():
+            if item.shortcut == key:
+                self.g_set_tool(item.name)
 
-            cursor = self.cursor_manager.get_cursor(tool)
-            if cursor:
-                self.setCursor(cursor)
-            else:
-                self.unsetCursor()
-
-            return
+                if item.cursor is None:
+                    self.unsetCursor()
+                else:
+                    self.g_set_cursor(item.cursor)
+                print(f"[TOOL] Activation de l'outil '{item.name}' via touche : {key}")
+                event.accept()
 
         super().keyPressEvent(event)
 
@@ -638,16 +642,3 @@ class GraphicView(QGraphicsView):
                 scale = self.transform().m11()
             finally:
                 painter.end()
-
-
-
-
-
-
-
-
-
-
-
-
-
