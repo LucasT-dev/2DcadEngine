@@ -1,26 +1,30 @@
-from PyQt6.QtCore import QRectF, QPointF
-from PyQt6.QtGui import QBrush, QPen, QTransform
-from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsItem
+from PyQt6.QtCore import Qt, QRectF, QPointF
+from PyQt6.QtGui import QPixmap, QTransform
+from PyQt6.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QGraphicsSceneMouseEvent
 
 from adapter import AdpaterItem
 from draw.HistoryManager import ModifyItemCommand
-from graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject
 from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 
 
-class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
+class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
 
-    def __init__(self, ellipse: QRectF, parent=None):
+    def __init__(self, pixmap: QPixmap, parent=None):
 
-        QGraphicsEllipseItem.__init__(self, ellipse, parent)
+        QGraphicsPixmapItem.__init__(self, pixmap, parent)
         ResizableGraphicsItem.__init__(self)
 
-        # Création des 4 Handles de redimensionnement
         self._create_handles()
+
+        self._original_pixmap = pixmap
+
+        self._rect = QRectF(0, 0, pixmap.width(), pixmap.height())
+
+        self.update_handles_position()
 
     def _create_handles(self):
         """Crée les 4 Handles de redimensionnement."""
-        rect = self.rect()
+        rect = self.boundingRect()
         self.add_handle("top_left", rect.topLeft())
         self.add_handle("top_right", rect.topRight())
         self.add_handle("bottom_left", rect.bottomLeft())
@@ -29,19 +33,21 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
 
     def update_handles_position(self):
         """Met à jour la position de tous les Handles."""
-        rect = self.rect()
+        rect = self.boundingRect()
         if not self.handles:
             return
+
         self.handles["top_left"].setPos(rect.topLeft())
         self.handles["top_right"].setPos(rect.topRight())
         self.handles["bottom_left"].setPos(rect.bottomLeft())
         self.handles["bottom_right"].setPos(rect.bottomRight())
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
-        """Appelé quand un handle est déplacé (par Handle)."""
+        """Appelé quand un handle est déplacé."""
+
         # Convertit la position de la scène vers le repère local
         local_pos = self.mapFromScene(event.scenePos())
-        rect = QRectF(self.rect())
+        rect = QRectF(self._rect)
 
         if role == "top_left":
             rect.setTopLeft(local_pos)
@@ -53,7 +59,19 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
             rect.setBottomRight(local_pos)
 
         rect = rect.normalized()
-        self.setRect(rect)
+        self._rect = rect
+
+        # Met à jour le pixmap redimensionné
+        scaled_pixmap = self._original_pixmap.scaled(
+            int(rect.width()), int(rect.height()),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+
+        self.setPixmap(scaled_pixmap)
+        self.setOffset(QPointF(rect.x(), rect.y()))
+        self.update_handles_position()
+
         self.update_handles_position()
 
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
@@ -67,7 +85,6 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
 
         self.save_history_geometry()
-
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur l'ellipse."""
@@ -100,60 +117,61 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         self._old_geometry = self.get_item_geometry
 
     def save_history_geometry(self):
-        new_ellipse = self.get_item_geometry
+        new_pixmap = self.get_item_geometry
 
-        if self._old_geometry != new_ellipse:
-            cmd = ModifyItemCommand(self, self._old_geometry, new_ellipse, "resize/move ellipse")
+        if self._old_geometry != new_pixmap:
+            cmd = ModifyItemCommand(self, self._old_geometry, new_pixmap, "resize/move image")
             self.scene().undo_stack.push(cmd)
 
     @property
     def get_item_geometry(self):
         pos = self.pos()
-        r = self.rect()
-        return pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height()
+        pixmap = self.pixmap()
+        return pos.x(), pos.y(), pixmap.width(), pixmap.height()
 
 
     def to_dict(self) -> dict:
-        r: QRectF = self.rect()
+        pos = self.pos()
+        offset = self.offset()
+
+        pixmap = self.pixmap()
 
         return {
-            "type": "ellipse",
+            "type": "pixmap",
+
             "data": AdpaterItem.get_data(self),
 
             "geometry": {
-                "x": r.x(),
-                "y": r.y(),
-                "w": r.width(),
-                "h": r.height(),
+                "x": pos.x(),
+                "y": pos.y(),
+                "w": pixmap.width(),
+                "h": pixmap.height(),
             },
-            "pen": AdpaterItem.get_pen(self),
-            "brush": AdpaterItem.get_brush(self),
+            "image": AdpaterItem.pixmap_to_base64(self.pixmap()),
             "flags": AdpaterItem.serialize_flags(self)
         }
 
     @classmethod
     def from_dict(cls, data: dict):
 
-        from graphic_view_element.GraphicItemManager.EllipseElement.EllipseElement import EllipseElement
+        from graphic_view_element.GraphicItemManager.PixmapElement.PixmapElement import PixmapElement
 
-        geometry = data["geometry"]
-        pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])
-        brush: QBrush = AdpaterItem.dict_to_brush(data=data["brush"])
         item_data = data["data"]
         transform = AdpaterItem.dict_to_transform(data=item_data["transform"])
+
+        geometry = data["geometry"]
+        x, y = geometry["x"], geometry["y"]
+        w, h = geometry["w"], geometry["h"]
+
         flags_data = data.get("flags", [])
-
-        x, y, w, h = geometry["x"], geometry["y"], geometry["w"], geometry["h"]
-
         flags = AdpaterItem.deserialize_flags(flags_data)
 
-        item = EllipseElement.create_custom_graphics_item(
+        pixmap = AdpaterItem.pixmap_from_base64(data["image"])
+
+        item = PixmapElement.create_custom_graphics_item(
             first_point=QPointF(x, y),
             second_point=QPointF(x + w, y + h),
-            border_color=pen.color(),
-            border_width=pen.width(),
-            border_style=pen.style(),
-            fill_color=brush.color(),
+            image_source=pixmap,  # ignoré car on n'utilise pas path
             z_value=item_data["z_value"],
             key=int(list(item_data["data"].keys())[0]) if item_data["data"] else 0,
             value=list(item_data["data"].values())[0] if item_data["data"] else "",
@@ -162,6 +180,7 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
             scale=item_data["scale"],
             flags=flags
         )
+
         item.setTransform(transform)
 
         return item

@@ -1,8 +1,10 @@
 from PyQt6.QtCore import QPointF, Qt, QTimer
+from PyQt6.QtGui import QTransform
 from PyQt6.QtWidgets import QGraphicsTextItem, QGraphicsItem, QGraphicsSceneMouseEvent
 
+from adapter import AdpaterItem
 from draw.HistoryManager import ModifyItemCommand
-from graphic_view_element.GraphicItemManager.Handles.HandleObject import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 
 
 class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
@@ -130,3 +132,59 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
         h = self.boundingRect().height()
         return pos.x(), pos.y(), w, h
 
+    def to_dict(self) -> dict:
+
+        return {
+            "type": "text",
+            "data": AdpaterItem.get_data(self),
+
+            "geometry": {
+                "x": self.pos().x(),
+                "y": self.pos().y(),
+            },
+            "text": self.toPlainText(),
+            "text_width": self.textWidth(),
+            "font": AdpaterItem.font_to_dict(self.font()),
+            "default_text_color": AdpaterItem.rgba_to_hex(self.defaultTextColor()),
+            "flags": AdpaterItem.serialize_flags(self)
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+
+        from graphic_view_element.GraphicItemManager.TextElement.TextElement import TextElement
+
+        font = AdpaterItem.font_from_dict(data["font"])
+        text_color = AdpaterItem.hex_to_rgba(data["default_text_color"])
+
+        item_data = data["data"]
+
+        transform = AdpaterItem.dict_to_transform(item_data["transform"])
+        visibility = item_data["visibility"]
+        scale = item_data["scale"]
+
+        geometry = data["geometry"]
+        x, y = geometry["x"], geometry["y"]
+
+        flags_data = data.get("flags", [])
+        flags = AdpaterItem.deserialize_flags(flags_data)
+
+        item = TextElement.create_custom_graphics_item(
+            first_point=QPointF(x, y),
+            second_point=QPointF(x + 1, y + 1),
+            text=data["text"],
+            text_color=text_color,
+            font=font,
+            text_width=data["text_width"],
+            z_value=item_data["z_value"],
+            key=int(list(item_data["data"].keys())[0]) if item_data["data"] else 0,
+            value=list(item_data["data"].values())[0] if item_data["data"] else "",
+            transform=QTransform(),
+            visibility=visibility,
+            scale=scale,
+            flags=flags
+        )
+
+        item.setTransform(transform)
+
+        return item

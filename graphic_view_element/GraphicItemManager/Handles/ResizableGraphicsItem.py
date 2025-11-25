@@ -1,5 +1,10 @@
+from abc import abstractmethod
+
 from PyQt6.QtCore import QPointF
+
 from graphic_view_element.GraphicItemManager.Handles.Handle import Handle
+
+
 
 
 class ResizableGraphicsItem:
@@ -41,3 +46,12 @@ class ResizableGraphicsItem:
         """À implémenter par les sous-classes."""
         raise NotImplementedError("Cette méthode doit être implémentée.")
 
+
+    @abstractmethod
+    def to_dict(self) -> dict:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def from_dict(cls, data: dict): # -> GraphicElementObject:
+        pass

@@ -2,7 +2,7 @@ import uuid
 
 from PyQt6.QtCore import QRectF, QPointF, Qt
 from PyQt6.QtWidgets import QGraphicsItem
-from PyQt6.QtGui import QPen, QColor, QBrush
+from PyQt6.QtGui import QPen, QColor, QBrush, QTransform
 
 from graphic_view_element.GraphicItemManager.CircleElement.CircleResizable import CircleResizable
 from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
@@ -53,18 +53,25 @@ class CircleElement(ElementObject):
                                     z_value: int = 0,
                                     key: int = 0,
                                     value: str = uuid.uuid4(),
+                                    transform: QTransform = QTransform(),
+                                    visibility: bool = True,
+                                    scale: float = 1.0,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
 
-        dx = first_point.x() - first_point.x()
-        dy = second_point.y() - second_point.y()
+        dx = second_point.x() - first_point.x()
+        dy = second_point.y() - first_point.y()
         size = max(abs(dx), abs(dy))
 
         dx = size if dx >= 0 else -size
         dy = size if dy >= 0 else -size
 
         corner = QPointF(first_point.x() + dx, first_point.y() + dy)
+
+        print(f"FIRST POINT : {first_point}")
+        print(f"CORNER POINT : {corner}")
+
         circle = QRectF(first_point, corner).normalized()
 
         pen = QPen(border_color)
@@ -77,6 +84,9 @@ class CircleElement(ElementObject):
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(z_value)
+        item.setTransform(transform)
+        item.setVisible(visibility)
+        item.setScale(scale)
 
         item.setFlags(flags)
 

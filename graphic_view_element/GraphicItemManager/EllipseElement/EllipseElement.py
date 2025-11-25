@@ -2,7 +2,7 @@ import uuid
 
 from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtCore import QRectF, QPointF, Qt
-from PyQt6.QtGui import QPen, QColor, QBrush
+from PyQt6.QtGui import QPen, QColor, QBrush, QTransform
 
 from graphic_view_element.GraphicItemManager.EllipseElement.EllipseResizable import EllipseResizable
 from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
@@ -37,9 +37,12 @@ class EllipseElement(ElementObject):
     def create_custom_graphics_item(first_point: QPointF, second_point: QPointF,
                                     border_color: QColor, border_width: int,
                                     border_style: Qt.PenStyle, fill_color: QColor,
-                                    z_value: int=0,
+                                    z_value: int = 0,
                                     key: int = 0,
                                     value: str = uuid.uuid4(),
+                                    transform: QTransform = QTransform(),
+                                    visibility: bool = True,
+                                    scale: float = 1.0,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -56,6 +59,9 @@ class EllipseElement(ElementObject):
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(z_value)
+        item.setTransform(transform)
+        item.setVisible(visibility)
+        item.setScale(scale)
 
         item.setFlags(flags)
 

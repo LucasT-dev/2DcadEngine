@@ -1,32 +1,38 @@
+import json
 import sys
 import uuid
 
 import keyboard
 from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtGui import QPainter, QColor, QFont
+from PyQt6.QtGui import QPainter, QColor, QFont, QTransform
 from PyQt6.QtWidgets import QApplication, QGraphicsItem
 
 from exemple.ItemInfoFormatter import ItemInfoFormatter
 from graphic_view_element.GraphicItemManager.CircleElement.CircleElement import CircleElement
 from graphic_view_element.GraphicItemManager.CircleElement.CirclePreview import CirclePreview
-from graphic_view_element.GraphicItemManager.CircleElement.CircleSerialize import CircleSerialise
+from graphic_view_element.GraphicItemManager.CircleElement.CircleResizable import CircleResizable
 from graphic_view_element.GraphicItemManager.EllipseElement.EllipseElement import EllipseElement
 from graphic_view_element.GraphicItemManager.EllipseElement.EllipsePreview import EllipsePreview
-from graphic_view_element.GraphicItemManager.EllipseElement.EllipseSerialize import EllipseSerialize
+from graphic_view_element.GraphicItemManager.EllipseElement.EllipseResizable import EllipseResizable
+from graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
+from graphic_view_element.GraphicItemManager.GroupElement.GroupPreview import GroupPreview
+from graphic_view_element.GraphicItemManager.GroupElement.GroupResizable import GroupResizable
+from graphic_view_element.GraphicItemManager.LineElement.LineResizable import LineResizable
+from graphic_view_element.GraphicItemManager.PixmapElement.PixmapElement import PixmapElement
+from graphic_view_element.GraphicItemManager.PixmapElement.PixmapPreview import PixmapPreview
+from graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
 from graphic_view_element.GraphicItemManager.LineElement.LineElement import LineElement
 from graphic_view_element.GraphicItemManager.LineElement.LinePreview import LinePreview
-from graphic_view_element.GraphicItemManager.LineElement.LineSerialize import LineSerialize
 from graphic_view_element.GraphicItemManager.RectangleElement.RectangleElement import RectangleElement
 from graphic_view_element.GraphicItemManager.RectangleElement.RectanglePreview import RectanglePreview
-from graphic_view_element.GraphicItemManager.RectangleElement.RectangleSerialize import RectangleSerialise
+from graphic_view_element.GraphicItemManager.RectangleElement.RectangleResizable import RectangleResizable
 from graphic_view_element.GraphicItemManager.SquareElement.SquareElement import SquareElement
 from graphic_view_element.GraphicItemManager.SquareElement.SquarePreview import SquarePreview
-from graphic_view_element.GraphicItemManager.SquareElement.SquareSerialize import SquareSerialise
+from graphic_view_element.GraphicItemManager.SquareElement.SquareResizable import SquareResizable
 from graphic_view_element.GraphicItemManager.TextElement.TextElement import TextElement
 from graphic_view_element.GraphicItemManager.TextElement.TextPreview import TextPreview
-from graphic_view_element.GraphicItemManager.TextElement.TextSerialize import TextSerialise
+from graphic_view_element.GraphicItemManager.TextElement.TextResizable import TextResizable
 from MainCad import MainCad
-from serialisation.SceneSerializer import SceneSerializer
 
 """
 Todo list :
@@ -186,55 +192,61 @@ class MyWindow(MainCad):
         # mise a jour de la position des regles
         # self.graphic_view.set_ruler_position(horizontal="top", vertical="right")
 
-        self.g_get_view.g_register_element(element_name="line", element_class=LineElement, serialisation_class=LineSerialize(), preview_class=LinePreview)
+        self.g_get_view.g_register_element(element_name="line", element_class=LineElement, preview_class=LinePreview, resizable_class=LineResizable)
         self.g_get_view.g_register_shortcut(name="line", key=Qt.Key.Key_L)
         self.g_get_view.g_register_cursor(name="line", cursor=Qt.CursorShape.CrossCursor)
 
-        self.g_get_view.g_register_element(element_name="rect", element_class=RectangleElement, serialisation_class=RectangleSerialise(), preview_class=RectanglePreview)
+        self.g_get_view.g_register_element(element_name="rect", element_class=RectangleElement, preview_class=RectanglePreview, resizable_class=RectangleResizable)
         self.g_get_view.g_register_shortcut(name="rect", key=Qt.Key.Key_R)
         self.g_get_view.g_register_cursor(name="rect", cursor=Qt.CursorShape.CrossCursor)
 
-        self.g_get_view.g_register_element(element_name="ellipse", element_class=EllipseElement, serialisation_class=EllipseSerialize(), preview_class=EllipsePreview)
+        self.g_get_view.g_register_element(element_name="ellipse", element_class=EllipseElement, preview_class=EllipsePreview, resizable_class=EllipseResizable)
         self.g_get_view.g_register_shortcut(name="ellipse", key=Qt.Key.Key_E)
         self.g_get_view.g_register_cursor(name="ellipse", cursor=Qt.CursorShape.CrossCursor)
 
-        self.g_get_view.g_register_element(element_name="text", element_class=TextElement, serialisation_class=TextSerialise(), preview_class=TextPreview)
+        self.g_get_view.g_register_element(element_name="text", element_class=TextElement, preview_class=TextPreview, resizable_class=TextResizable)
         self.g_get_view.g_register_shortcut(name="text", key=Qt.Key.Key_T)
         self.g_get_view.g_register_cursor(name="text", cursor=Qt.CursorShape.CrossCursor)
 
-        self.g_get_view.g_register_element(element_name="square", element_class=SquareElement, serialisation_class=SquareSerialise(), preview_class=SquarePreview)
+        self.g_get_view.g_register_element(element_name="square", element_class=SquareElement, preview_class=SquarePreview, resizable_class=SquareResizable)
         self.g_get_view.g_register_shortcut(name="square", key=Qt.Key.Key_S)
         self.g_get_view.g_register_cursor(name="square", cursor=Qt.CursorShape.CrossCursor)
 
-        self.g_get_view.g_register_element("circle", element_class=CircleElement, serialisation_class=CircleSerialise(), preview_class=CirclePreview)
+        self.g_get_view.g_register_element("circle", element_class=CircleElement, preview_class=CirclePreview, resizable_class=CircleResizable)
         self.g_get_view.g_register_shortcut(name="circle", key=Qt.Key.Key_C)
         self.g_get_view.g_register_cursor(name="circle", cursor=Qt.CursorShape.CrossCursor)
 
+        self.g_get_view.g_register_element("image", element_class=PixmapElement, preview_class=PixmapPreview, resizable_class=PixmapResizable)
+        self.g_get_view.g_register_shortcut(name="image", key=Qt.Key.Key_P)
+        self.g_get_view.g_register_cursor(name="image", cursor=Qt.CursorShape.CrossCursor)
+
+        self.g_get_view.g_register_element("group", element_class=GroupElement,
+                                           preview_class=GroupPreview, resizable_class=GroupResizable)
+        self.g_get_view.g_register_shortcut(name="group", key=Qt.Key.Key_G)
+        self.g_get_view.g_register_cursor(name="group", cursor=Qt.CursorShape.CrossCursor)
 
         """self.g_get_view.g_register_preview_method("RightLine", RightLinePreview)
         self.g_get_view.g_register_preview_method("CircleFromCenter", CircleCenterPreview)
         self.g_get_view.g_register_preview_method("RectangleFromCenter", RectangleCenterPreview)
         self.g_get_view.g_register_preview_method("SquareFromCenter", SquareCenterPreview)
-        self.g_get_view.g_register_preview_method("Pixmap", PixmapPreview)
-
+        
         self.g_get_view.g_register_view_element("RightLine", RightLineElement)
         self.g_get_view.g_register_view_element("CircleFromCenter", CircleCenterElement)
         self.g_get_view.g_register_view_element("RectangleFromCenter", RectangleCenterElement)
         self.g_get_view.g_register_view_element("SquareFromCenter", SquareCenterElement)
-        self.g_get_view.g_register_view_element("Pixmap", PixmapElement)
 
         self.g_get_view.g_register_shortcut(Qt.Key.Key_I, "RightLine")
         self.g_get_view.g_register_shortcut(Qt.Key.Key_O, "CircleFromCenter")
         self.g_get_view.g_register_shortcut(Qt.Key.Key_Y, "RectangleFromCenter")
         self.g_get_view.g_register_shortcut(Qt.Key.Key_H, "SquareFromCenter")
-        self.g_get_view.g_register_shortcut(Qt.Key.Key_P, "Pixmap")
         """
 
         # self.g_get_view.g_set_fill_color(QColor(0,0,0, 0))
 
         # self.g_get_view.g_change_border_color_items_selected(QColor(0, 255, 0))
+        print("1")
 
-        self.g_get_view.g_add_item(name="ellipse", first_point=QPointF(150, 300),
+        """self.g_get_view.g_add_item(name="ellipse", first_point=QPointF(150, 300),
                         second_point=QPointF(180, 200),
                         fill_color=QColor("white"),
                         border_color=QColor("blue"),
@@ -242,8 +254,13 @@ class MyWindow(MainCad):
                         border_style=Qt.PenStyle.DashDotDotLine,
                         z_value=100,
                         key=0,
-                        value="output data 0")
+                        value="output data 0",
+                        transform = QTransform(),
+                        visibility = True,
+                        scale = 1.0
+                                   )
 
+        print("2")
 
 
         uuid_test = str(uuid.uuid4())
@@ -256,12 +273,14 @@ class MyWindow(MainCad):
                         border_style=Qt.PenStyle.DashDotDotLine,
                         fill_color=QColor(0, 0, 255),
                         key=0, value=uuid_test,
-                        z_value=100
+                        z_value=100,
+                        transform=QTransform(),
+                        visibility=True,
+                        scale=1.0
         )
 
         item = self.g_get_view.g_get_item_by_data(key=0, value=uuid_test)
-        item.setData(3, "Test 3")
-
+        item.setData(3, "Test 3")"""
 
         self.g_get_view.g_set_shortcut_undo_action()
         self.g_get_view.g_set_shortcut_redo_action()
@@ -274,7 +293,7 @@ class MyWindow(MainCad):
         keyboard.add_hotkey('u', self.ungroup_function)
 
         keyboard.add_hotkey('a', self.serialize)
-        keyboard.add_hotkey('b', self.unserialize)
+        keyboard.add_hotkey('b', self.deserialize)
 
         keyboard.add_hotkey('escape', self.escape)
 
@@ -286,17 +305,22 @@ class MyWindow(MainCad):
 
     def serialize(self):
 
-        g_get_item = self.g_get_view.g_get_items()
-        SceneSerializer.save_to_file(g_get_item, "../output/test_json")
+        data = self.g_get_view.g_serialize_item_scene()
 
-    def unserialize(self):
 
-        items = SceneSerializer.load_from_file("../output/test_json")
+        with open("test_1.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
 
-        for item in items:
+    def deserialize(self):
+        # Lire le fichier JSON
+        with open("test_1.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-            print(item)
-            self.g_get_view.g_add_item(item)
+        # Appeler ta fonction interne qui reconstruit les objets
+
+        for item in self.g_get_view.g_deserialize_items(data):
+            print(f"ITEM ==== {item}")
+            self.g_get_view.g_add_QGraphicitem(item)
 
     def group_function(self):
         print("group")
@@ -309,7 +333,7 @@ class MyWindow(MainCad):
 
     def mousse_move(self, scene_pos):
 
-        self.g_get_view.annotation_manager.update_text("mouse",
+        self.g_get_view.annotation_manager.update_text("mousse",
                                                               f"<b>x :</b> {int(scene_pos.x())} <b>| y :</b> {int(scene_pos.y())}")
 
     def update_history(self, scene):
@@ -319,7 +343,7 @@ class MyWindow(MainCad):
 
     def change_tool(self, tool: str):
         self.g_get_view.annotation_manager.update_text("tool", f"<b>Tool :</b> {tool}")
-        if tool == "Mouse" :
+        if tool == "mousse" :
             self.g_get_view.g_unselect_items()
 
     def wheel_move(self):

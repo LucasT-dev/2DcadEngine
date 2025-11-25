@@ -2,7 +2,7 @@ import uuid
 
 from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtWidgets import QGraphicsItem
-from PyQt6.QtGui import QPen, QColor
+from PyQt6.QtGui import QPen, QColor, QTransform
 
 from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
 from graphic_view_element.GraphicItemManager.LineElement.LineResizable import LineResizable
@@ -29,12 +29,16 @@ class LineElement(ElementObject):
 
         return item
 
-    def create_custom_graphics_item(self, first_point: QPointF, second_point: QPointF,
+    @staticmethod
+    def create_custom_graphics_item(first_point: QPointF, second_point: QPointF,
                                     border_color: QColor, border_width: int,
                                     border_style: Qt.PenStyle,
                                     z_value: int = 0,
                                     key: int = 0,
                                     value: str = uuid.uuid4(),
+                                    transform: QTransform = QTransform(),
+                                    visibility: bool = True,
+                                    scale: float = 1.0,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):

@@ -1,9 +1,10 @@
-from PyQt6.QtCore import QPointF
-from PyQt6.QtGui import QUndoCommand
+from PyQt6.QtCore import QPointF, QRectF, Qt
+from PyQt6.QtGui import QUndoCommand, QColor
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPixmapItem, QGraphicsTextItem, \
     QGraphicsLineItem, QGraphicsItem
 
-from graphic_view_element._old.resizable_element.GroupeResize_3 import GroupResize_3
+from graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
+from graphic_view_element.GraphicItemManager.GroupElement.GroupResizable import GroupResizable
 
 
 class AddItemCommand(QUndoCommand):
@@ -209,9 +210,13 @@ class GroupItemsCommand(QUndoCommand):
         if not self.selected_items:
             return
 
+        print("test 8")
+
         # Stocke les positions originales
         for item in self.selected_items:
             self._original_positions[item] = item.scenePos()
+
+        print("test 9")
 
         # Calcule le centre des items sélectionnés
         center = QPointF()
@@ -219,24 +224,35 @@ class GroupItemsCommand(QUndoCommand):
             center += item.scenePos()
         center /= len(self.selected_items)
 
+        print("test 10")
+
         # Crée le groupe
-        self._group = GroupResize_3()
-        self._group.setPos(center)
+        self._group = GroupElement.create_custom_graphics_item(first_point=QPointF(0,0), second_point=QPointF(0,0),
+                                                               border_color=QColor(0,0,0,255), border_style=Qt.PenStyle.SolidLine,
+                                                               border_width=1, fill_color=QColor(0,0,0,0)) # GroupResizable(QRectF(0,0,0,0))
         self.scene().addItem(self._group)
+        print("test 11")
+        self._group.setPos(center)
+        print("test 12")
+
+        print("test 13")
 
         # Ajoute les items au groupe
         for item in self.selected_items:
-            self._group.addToGroup(item)
+            self._group.add_to_group(item)
+
+        print("test 14")
 
         # Sélectionne le groupe
         self._group.setSelected(True)
+        print("test 15")
         self.scene().update()
 
     def undo(self):
         if not self._group:
             return
 
-        group_items = self._group._items.copy()
+        group_items = self._group.childItems.copy()
 
         # Supprime le groupe
         self.scene().removeItem(self._group)
@@ -304,7 +320,7 @@ class UngroupItemsCommand(QUndoCommand):
 
         # Réintègre les items
         for item in self._items:
-            new_group.addToGroup(item)
+            new_group.add_to_group(item)
 
         # Restaure l'état
         new_group.setSelected(True)

@@ -1,27 +1,33 @@
+import os
 import uuid
-
-from PyQt6.QtCore import QRectF, QPointF, Qt
+from PyQt6.QtGui import QPixmap, QTransform
+from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtWidgets import QGraphicsItem
-from PyQt6.QtGui import QPen, QColor, QBrush, QTransform
 
 from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
-from graphic_view_element.GraphicItemManager.RectangleElement.RectangleResizable import RectangleResizable
+from graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
 
-class RectangleElement(ElementObject):
+
+class PixmapElement(ElementObject):
 
     def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
 
-        rect = QRectF(first_point, second_point).normalized()
+        image_path = "C:\Bureau\\free-nature-images.jpg"
+        if not os.path.exists(image_path):
+            print("⚠ Image par défaut introuvable, utilisez un chemin valide.")
+            return
 
-        pen = QPen(QColor(self.get_style().get_border_color()))
-        pen.setWidth(self.get_style().get_border_width())
-        pen.setStyle(self.get_style().get_border_style())
+        pixmap = QPixmap(image_path)
 
-        brush = QBrush(QColor(self.get_style().get_fill_color()))
+        # Taille de base = taille définie par start/end
+        target_rect = QRectF(first_point, second_point).normalized()
 
-        item = RectangleResizable(rect)
-        item.setPen(pen)
-        item.setBrush(brush)
+        pixmap = pixmap.transformed(QTransform().scale(1, -1))
+        pixmap = pixmap.scaled(target_rect.size().toSize(), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+
+        item = PixmapResizable(pixmap)
+
+        item.setPos(target_rect.topLeft())
         item.setZValue(self.get_style().get_z_value())
 
         item.setFlags(
@@ -39,8 +45,7 @@ class RectangleElement(ElementObject):
 
     @staticmethod
     def create_custom_graphics_item(first_point: QPointF, second_point: QPointF,
-                                    border_color: QColor, border_width: int,
-                                    border_style: Qt.PenStyle, fill_color: QColor,
+                                    image_source,
                                     z_value: int = 0,
                                     key: int = 0,
                                     value: str = uuid.uuid4(),
@@ -51,25 +56,18 @@ class RectangleElement(ElementObject):
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
 
-        rect = QRectF(first_point, second_point).normalized()
+        pixmap = QPixmap(image_source)
 
-        pen = QPen(border_color)
-        pen.setWidth(border_width)
-        pen.setStyle(border_style)
+        target_rect = QRectF(first_point, second_point).normalized()
 
-        brush = QBrush(fill_color)
+        pixmap = pixmap.transformed(transform)
+        pixmap = pixmap.scaled(target_rect.size().toSize(), Qt.AspectRatioMode.IgnoreAspectRatio)
 
-        item = RectangleResizable(rect)
-        item.setPen(pen)
-        item.setBrush(brush)
+        item = PixmapResizable(pixmap)
+        item.setPos(target_rect.topLeft())
         item.setZValue(z_value)
-        item.setTransform(transform)
-        item.setVisible(visibility)
-        item.setScale(scale)
 
         item.setFlags(flags)
-
         item.setData(key, value)
 
         return item
-

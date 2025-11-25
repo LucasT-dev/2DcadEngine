@@ -1,8 +1,10 @@
-from PyQt6.QtCore import QRectF
+from PyQt6.QtCore import QRectF, QPointF
+from PyQt6.QtGui import QPen, QBrush, QTransform
 from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphicsItem
 
+from adapter import AdpaterItem
 from draw.HistoryManager import ModifyItemCommand
-from graphic_view_element.GraphicItemManager.Handles.HandleObject import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 
 
 class RectangleResizable(ResizableGraphicsItem, QGraphicsRectItem):
@@ -107,3 +109,56 @@ class RectangleResizable(ResizableGraphicsItem, QGraphicsRectItem):
         pos = self.pos()
         r = self.rect()
         return pos.x(), pos.y(), r.x(), r.y(), r.width(), r.height()
+
+    def to_dict(self) -> dict:
+        r: QRectF = self.rect()
+
+        return {
+            "type" : "rect",
+            "data" : AdpaterItem.get_data(self),
+
+            "geometry" : {
+                "x": r.x(),
+                "y": r.y(),
+                "w": r.width(),
+                "h": r.height(),
+            },
+            "pen" : AdpaterItem.get_pen(self),
+            "brush" : AdpaterItem.get_brush(self),
+            "flags": AdpaterItem.serialize_flags(self)
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+
+        from graphic_view_element.GraphicItemManager.RectangleElement.RectangleElement import RectangleElement
+
+        pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])
+        brush: QBrush = AdpaterItem.dict_to_brush(data=data["brush"])
+        item_data = data["data"]
+        transform = AdpaterItem.dict_to_transform(data=item_data["transform"])
+
+        geometry = data["geometry"]
+        x, y, w, h = geometry["x"], geometry["y"], geometry["w"], geometry["h"]
+
+        flags_data = data.get("flags", [])
+        flags = AdpaterItem.deserialize_flags(flags_data)
+
+        item = RectangleElement.create_custom_graphics_item(
+            first_point=QPointF(x, y),
+            second_point=QPointF(x + w, y + h),
+            border_color=pen.color(),
+            border_width=pen.width(),
+            border_style=pen.style(),
+            fill_color=brush.color(),
+            z_value=item_data["z_value"],
+            key=int(list(item_data["data"].keys())[0]) if item_data["data"] else 0,
+            value=list(item_data["data"].values())[0] if item_data["data"] else "",
+            transform=QTransform(),
+            visibility=item_data["visibility"],
+            scale=item_data["scale"],
+            flags=flags
+        )
+        item.setTransform(transform)
+
+        return item

@@ -1,7 +1,10 @@
+from PyQt6.QtCore import QPointF
+from PyQt6.QtGui import QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsSceneMouseEvent, QGraphicsItem
 
+from adapter import AdpaterItem
 from draw.HistoryManager import ModifyItemCommand
-from graphic_view_element.GraphicItemManager.Handles.HandleObject import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 
 
 class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
@@ -93,3 +96,57 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         line = self.line()
         pos = self.pos()
         return pos.x(), pos.y(), line.x1(), line.y1(), line.x2(), line.y2()
+
+
+    def to_dict(self) -> dict:
+        line = self.line()
+
+        return {
+            "type": "line",
+            "data": AdpaterItem.get_data(self),
+
+            "geometry": {
+                "x": line.x1(),
+                "y": line.y1(),
+                "w": line.x2(),
+                "h": line.y2(),
+            },
+            "pen": AdpaterItem.get_pen(self),
+            "flags": AdpaterItem.serialize_flags(self)
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+
+        from graphic_view_element.GraphicItemManager.LineElement.LineElement import LineElement
+
+        pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])
+        item_data = data["data"]
+
+        transform = AdpaterItem.dict_to_transform(item_data["transform"])
+
+        flags_data = data.get("flags", [])
+        flags = AdpaterItem.deserialize_flags(flags_data)
+
+        geometry = data["geometry"]
+        x1, y1 = geometry["x"], geometry["y"]
+        x2, y2 = geometry["w"], geometry["h"]
+
+        item = LineElement.create_custom_graphics_item(
+            first_point=QPointF(x1, y1),
+            second_point=QPointF(x2, y2),
+            border_color=pen.color(),
+            border_width=pen.width(),
+            border_style=pen.style(),
+            z_value=item_data["z_value"],
+            key=int(list(item_data["data"].keys())[0]) if item_data["data"] else 0,
+            value=list(item_data["data"].values())[0] if item_data["data"] else "",
+            transform=QTransform(),
+            visibility=item_data["visibility"],
+            scale=item_data["scale"],
+            flags=flags
+        )
+
+        item.setTransform(transform)
+
+        return item

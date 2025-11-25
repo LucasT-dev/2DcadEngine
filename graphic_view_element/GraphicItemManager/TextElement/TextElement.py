@@ -35,7 +35,8 @@ class TextElement(ElementObject):
 
         return item
 
-    def create_custom_graphics_item(self, first_point: QPointF, second_point: QPointF,
+    @staticmethod
+    def create_custom_graphics_item(first_point: QPointF, second_point: QPointF,
                                     text: str = "Text",
                                     text_color: QColor = QColor(0, 0, 0),
                                     font: QFont = QFont("Arial", 14),
@@ -43,6 +44,9 @@ class TextElement(ElementObject):
                                     z_value: int = 0,
                                     key: int = 0,
                                     value: str = uuid.uuid4(),
+                                    transform: QTransform = QTransform(),
+                                    visibility: bool = True,
+                                    scale: float = 1.0,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -57,7 +61,7 @@ class TextElement(ElementObject):
         item.setZValue(z_value)
         item.setFlags(flags)
         item.setDefaultTextColor(text_color)
-        item.setTransform(QTransform().scale(1, -1))
+        item.setTransform(transform)
 
         item.setData(key, value)
 

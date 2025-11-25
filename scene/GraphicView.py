@@ -1,3 +1,5 @@
+import importlib
+
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
@@ -12,7 +14,8 @@ from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
 from graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
 from graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject, ElementObject, \
-    SerialisationObject, PreviewObject
+    PreviewObject
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 from graphic_view_element.style.StyleElement import StyleElement
 
 
@@ -394,8 +397,9 @@ class GraphicView(QGraphicsView):
 
     def g_add_item(self, name: str, **kwargs):
         """Ajoute un élément personnalisé à la scène."""
+        self.scene().addItem(self.element_manager.get_element(name).element.create_custom_graphics_item(**kwargs))
 
-        item = self.element_manager.get_element(name).element.create_custom_graphics_item(**kwargs)
+    def g_add_QGraphicitem(self, item: QGraphicsItem):
         self.scene().addItem(item)
 
     # delete selected item by user program
@@ -411,10 +415,95 @@ class GraphicView(QGraphicsView):
     # -------------------- end register object preview method --
 
 
+    # -------------------- start serialize/deserialize method---
+    def g_serialize_item_scene(self) -> list[dict]:
+        return self.g_serialize_items(self.scene().items())
+
+    def g_serialize_items(self, item_list) -> list[dict]:
+        """Parcourt tous les items de la scène et sérialise ceux appartenant à un GraphicElementObject."""
+        if not self.scene():
+            return []
+
+        serialized_items = []
+
+        # Récupère toutes les classes resizable enregistrées
+        resizable_classes = [elem.resizable_class for elem in self.element_manager.get_all_items()]
+
+        for item in item_list:
+
+            parent = item.parentItem()
+            if parent and any(isinstance(parent, cls) for cls in resizable_classes):
+                continue  # ne pas enregistrer les enfants (déjà dans le groupe)
+
+            # Vérifie si l'item est un Resizable (ou un type enregistré)
+            if any(isinstance(item, cls) for cls in resizable_classes):
+
+                # Vérifie que l'item possède bien une méthode to_dict
+                if hasattr(item, "to_dict") and callable(item.to_dict):
+                    serialized_items.append(item.to_dict())
+                else:
+                    print(f"[WARN] L'item {item} est resizable mais n'a pas de méthode to_dict()")
+
+        print(serialized_items)
+        return serialized_items
+
+    def g_deserialize_items(self, data_list: list[dict]) -> list[QGraphicsItem]:
+        """Reconstruit une liste d'items graphiques à partir d'une liste de dictionnaires JSON."""
+        if not data_list:
+            return []
+
+        deserialized_items = []
+
+        for entry in data_list:
+            print(f"entry : {entry}")
+            item_type = entry.get("type")
+            print(f"item_type : {item_type}")
+
+            if not item_type:
+                print(f"[WARN] Entrée JSON sans type : {entry}")
+                continue
+
+            class_path = entry.get("data", {}).get("class")
+            resizable_class = self.resolve_class_from_path(class_path)
+            print(f"class path : {class_path}")
+            print(f"resizable_class : {resizable_class}")
+            # Récupération de la classe de sérialisation (ex : RectangleSerialize)
+            #serialize_class = elements[item_type]
+
+            # Appel direct au from_dict()
+            #try:
+            item = resizable_class.from_dict(data=entry)
+
+            if item:
+                deserialized_items.append(item)
+            else:
+                print(f"[WARN] from_dict() pour '{item_type}' a retourné None")
+            """except Exception as e:
+                print(f"[ERROR] from_dict() failed for '{item_type}': {e}")"""
+
+        return deserialized_items
+
+    def resolve_class_from_path(self, dotted_path: str):
+        """
+        Convertit une chaîne 'module.submodule.ClassName' en la classe Python correspondante.
+        Lève ImportError / AttributeError si ça échoue.
+        """
+        if not dotted_path or "." not in dotted_path:
+            raise ValueError(f"Chemin de classe invalide : {dotted_path}")
+
+        module_path, class_name = dotted_path.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        cls = getattr(module, class_name)
+        return cls
+
+
+    # -------------------- end serialize/deserialize method ----
+
+
     # -------------------- start register object view method ---
 
     def g_register_element(self, element_name: str, element_class: type[ElementObject],
-                           serialisation_class: SerialisationObject, preview_class: type[PreviewObject]):
+                           preview_class: type[PreviewObject], resizable_class: ResizableGraphicsItem | None):
         """Associer une preview à un nom d’outil (Tool ou str)."""
         # Instancier preview_class avec self.style_element
         preview_instance = preview_class(style=self.style_element)
@@ -423,9 +512,11 @@ class GraphicView(QGraphicsView):
         self.element_manager.register_element(name=element_name,
                                               element=GraphicElementObject(name=element_name,
                                                                             element_class=element_instance,
-                                                                            serialisation_class=serialisation_class,
                                                                             preview_class=preview_instance,
-                                                                            style=self.style_element))
+                                                                            style=self.style_element)
+                                              .set_resizable_class(resizable_class)
+
+                                              )
 
     # -------------------- end register object view method -----
 
@@ -510,7 +601,7 @@ class GraphicView(QGraphicsView):
 
     # Gestion d'affichage ou non de la zone de selection en fonction de l'outil
     def _update_selection_mode(self, tool: str):
-        if tool == "Mouse":
+        if tool == "mousse":
             self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
         else:
             self.setDragMode(QGraphicsView.DragMode.NoDrag)

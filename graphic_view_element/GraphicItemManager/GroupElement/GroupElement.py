@@ -1,26 +1,17 @@
 import uuid
 
-from PyQt6.QtCore import QRectF, QPointF, Qt
+from PyQt6.QtCore import QPointF, QRectF, Qt
+from PyQt6.QtGui import QBrush, QColor, QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsItem
-from PyQt6.QtGui import QPen, QColor, QBrush, QTransform
 
 from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
-from graphic_view_element.GraphicItemManager.SquareElement.SquareResizable import SquareResizable
+from graphic_view_element.GraphicItemManager.GroupElement.GroupResizable import GroupResizable
 
 
-class SquareElement(ElementObject):
+class GroupElement(ElementObject):
 
-    def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
-
-        dx = second_point.x() - first_point.x()
-        dy = second_point.y() - first_point.y()
-        size = max(abs(dx), abs(dy))
-
-        dx = size if dx >= 0 else -size
-        dy = size if dy >= 0 else -size
-
-        corner = QPointF(first_point.x() + dx, first_point.y() + dy)
-        rect = QRectF(first_point, corner).normalized()
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF, items:[]=None):
+        rect = QRectF(first_point, second_point).normalized()
 
         pen = QPen(QColor(self.get_style().get_border_color()))
         pen.setWidth(self.get_style().get_border_width())
@@ -28,7 +19,7 @@ class SquareElement(ElementObject):
 
         brush = QBrush(QColor(self.get_style().get_fill_color()))
 
-        item = SquareResizable(rect)
+        item = GroupResizable(rect, items=items)
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(self.get_style().get_z_value())
@@ -36,8 +27,8 @@ class SquareElement(ElementObject):
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
-
         )
+
         item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
         item.setData(self.get_style().get_key(), self.get_style().get_value())
@@ -58,17 +49,12 @@ class SquareElement(ElementObject):
                                     scale: float = 1.0,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                                    items=None):
 
-        dx = second_point.x() - first_point.x()
-        dy = second_point.y() - first_point.y()
-        size = max(abs(dx), abs(dy))
-
-        dx = size if dx >= 0 else -size
-        dy = size if dy >= 0 else -size
-
-        corner = QPointF(first_point.x() + dx, first_point.y() + dy)
-        rect = QRectF(first_point, corner).normalized()
+        if items is None:
+            items = []
+        rect = QRectF(first_point, second_point).normalized()
 
         pen = QPen(border_color)
         pen.setWidth(border_width)
@@ -76,7 +62,7 @@ class SquareElement(ElementObject):
 
         brush = QBrush(fill_color)
 
-        item = SquareResizable(rect)
+        item = GroupResizable(rect, items)
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(z_value)
@@ -88,4 +74,8 @@ class SquareElement(ElementObject):
 
         item.setData(key, value)
 
+        for child in items:
+            item.add_to_group(child)
+
         return item
+

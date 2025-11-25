@@ -4,6 +4,7 @@ from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QGraphicsItem
 
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 from graphic_view_element.style.StyleElement import StyleElement
 
 
@@ -23,18 +24,6 @@ class ElementObject:
     def create_custom_graphics_item(self, **kwargs) -> QGraphicsItem:
         """Méthode à implémenter pour chaque type d'élément avec ses paramètres spécifiques."""
         pass
-
-
-class SerialisationObject:
-
-    @abstractmethod
-    def to_dict(self) -> dict:
-       pass
-
-    @abstractmethod
-    def from_dict(self, data: dict): # -> GraphicElementObject:
-        pass
-
 
 class PreviewObject:
 
@@ -61,7 +50,7 @@ class PreviewObject:
 
 class GraphicElementObject:
 
-    def __init__(self, name: str, element_class: ElementObject, serialisation_class: SerialisationObject, preview_class: PreviewObject, style: StyleElement):
+    def __init__(self, name: str, element_class: ElementObject, preview_class: PreviewObject, style: StyleElement):
 
         self.name = name # Nom de l'item
 
@@ -71,9 +60,9 @@ class GraphicElementObject:
         self._style = style
 
         self._element: ElementObject             = element_class       # Class de création de l'item
-        self._serialisation: SerialisationObject = serialisation_class # Class de serialisation / deserialisation de l'item
         self._preview: PreviewObject             = preview_class       # Class de preview de l'item pour preview lors du dessin
 
+        self._resizable_class: ResizableGraphicsItem | None = None
 
     def name(self):
         return self.name
@@ -82,9 +71,7 @@ class GraphicElementObject:
     def element(self):
         return self._element
 
-    @property
-    def serialisation(self):
-        return self._serialisation
+
 
     def get_preview(self) -> PreviewObject:
         return self._preview
@@ -94,17 +81,29 @@ class GraphicElementObject:
         return self._style
 
     @property
-    def cursor(self):
+    def cursor(self) -> Qt.CursorShape | QCursor:
         return self._cursor
 
     @property
-    def shortcut(self):
+    def shortcut(self) -> Qt.Key:
         return self._shortcut
+
+
+    def set_resizable_class(self, cls: ResizableGraphicsItem):
+        """Définit la classe de l'item graphique"""
+        self._resizable_class = cls
+        return self
+
+    @property
+    def resizable_class(self) -> type | None:
+        return self._resizable_class
 
 
     def set_cursor(self, cursor: Qt.CursorShape | QCursor):
         self._cursor = cursor
+        return self
 
 
     def set_shortcut(self, shortcut: Qt.Key):
         self._shortcut = shortcut
+        return self
