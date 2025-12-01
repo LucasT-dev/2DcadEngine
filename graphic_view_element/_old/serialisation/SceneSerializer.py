@@ -3,7 +3,7 @@ from PyQt6.QtGui import QColor
 from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtWidgets import QGraphicsItem
 
-from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
+from graphic_view_element._old.serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 def color_to_dict(color: QColor) -> dict:

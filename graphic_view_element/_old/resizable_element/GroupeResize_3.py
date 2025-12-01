@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsItem, QGraphicsEllipseIt
 from PyQt6.QtGui import QPen, QColor, QBrush, QCursor
 
 from graphic_view_element.style.HandleStyle import HandleStyle
-from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
+from graphic_view_element._old.serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 class Handle(QGraphicsEllipseItem):
 

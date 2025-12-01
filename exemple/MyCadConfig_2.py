@@ -42,7 +42,7 @@ class MyWidget:
         scene = maincad.g_get_scene
 
 
-        view.g_scale(1, -1)
+        view.g_set_scale(1, -1)
         view.g_set_scene_rectangle(-20, -20, 700, 600)
         view.g_set_background_color("#5B5B5B")
 

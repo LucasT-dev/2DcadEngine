@@ -22,13 +22,13 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         self._items = []  # Liste pour suivre les items
 
         # Création des 4 Handles de redimensionnement
-        self._create_handles()
+        self.create_handles()
 
         for item in items:
             self.add_to_group(item)
 
 
-    def _create_handles(self):
+    def create_handles(self):
         """Crée les 4 Handles de redimensionnement."""
         rect = self.rect()
         self.add_handle("top_left", rect.topLeft())
@@ -36,8 +36,10 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         self.add_handle("bottom_left", rect.bottomLeft())
         self.add_handle("bottom_right", rect.bottomRight())
         self.update_handles_position()
-        print("test 21")
 
+    def delete_handle(self):
+        for handle in self.handles:
+            self.scene().removeItem(handle)
 
     def update_handles_position(self):
         """Met à jour la position de tous les Handles."""
@@ -161,17 +163,6 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
                 continue
 
             items_data.append(child.to_dict())
-
-        print(self.brush().color().red())
-        print(self.brush().color().green())
-        print(self.brush().color().blue())
-        print(self.brush().color().alpha()) # Alpha a 255 = erreur quelque part
-        print("------------")
-        print(self.pen().color().red())
-        print(self.pen().color().green())
-        print(self.pen().color().blue())
-        print(self.pen().color().alpha())
-
 
         return {
             "type" : "group",

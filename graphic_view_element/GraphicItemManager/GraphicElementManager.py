@@ -27,8 +27,6 @@ class GraphicElementManager:
 
         element = self.item_register.get(name)
 
-        print(element)
-
         return element(start, end, style)
 
     def contains_element(self, name: str) -> bool:

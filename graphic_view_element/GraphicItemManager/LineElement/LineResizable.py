@@ -72,8 +72,6 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
             selected = bool(value)
             self.select_handle(selected)
 
-        print(change)
-
         return super().itemChange(change, value)
 
     def select_handle(self, visible: bool):

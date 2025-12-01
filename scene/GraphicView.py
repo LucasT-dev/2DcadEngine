@@ -1,7 +1,10 @@
 import importlib
+import logging
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF
+from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap, QPageSize, \
+    QPageLayout, QTransform
+from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
     QGraphicsTextItem
 
@@ -141,8 +144,14 @@ class GraphicView(QGraphicsView):
     def g_set_background_color(self, hex_color: str):
         self.setBackgroundBrush(QBrush(QColor(hex_color)))
 
-    def g_scale(self, sx, sy):
+    def g_set_scale(self, sx, sy):
         self.scale(sx, sy)
+
+    def g_get_scale(self):
+        transform = self.transform()
+        print(f"M11 = {transform.m11()}")
+        print(f"M22 = {transform.m22()}")
+        return transform.m11(), transform.m22()
 
     def g_set_scene_rectangle(self, ax: float=-1000, ay: float=-1000, aw: float=2000, ah: float=2000):
         self.setSceneRect(ax, ay, aw, ah)
@@ -169,8 +178,6 @@ class GraphicView(QGraphicsView):
     def g_set_unit(self, unit: str):
         if unit not in ("px", "mm", "cm"):
             raise ValueError("Unit must be 'px', 'mm' or 'cm'")
-
-        print("g_set_unit graphic view")
 
         if hasattr(self, 'rulers'):
             self.rulers["h"].unit = unit
@@ -238,7 +245,7 @@ class GraphicView(QGraphicsView):
 
     def g_change_border_color_items_selected(self, border_color: QColor):
         for item in self.scene().selectedItems():
-            if hasattr(item, "pen"):
+            if hasattr(item, "setPen"):
                 old_item = item
                 pen = item.pen()
                 pen.setColor(border_color)
@@ -249,7 +256,7 @@ class GraphicView(QGraphicsView):
 
     def g_change_border_width_items_selected(self, width: int):
         for item in self.scene().selectedItems():
-            if hasattr(item, "pen"):
+            if hasattr(item, "setPen"):
                 old_item = item
                 pen = item.pen()
                 pen.setWidth(width)
@@ -260,7 +267,7 @@ class GraphicView(QGraphicsView):
 
     def g_change_border_style_items_selected(self, style: Qt.PenStyle):
         for item in self.scene().selectedItems():
-            if hasattr(item, "pen"):
+            if hasattr(item, "setPen"):
                 old_item = item
                 pen = item.pen()
                 pen.setStyle(style)
@@ -360,28 +367,23 @@ class GraphicView(QGraphicsView):
         return None
 
     def g_ungroup_items(self, items):
-        print("ungroupe 2")
+
         selected_items = items
         if not selected_items:
             return None
 
-        print(items)
         # On ne prend que le premier groupe sélectionné
         group = next((it for it in selected_items if isinstance(it, QGraphicsItem)), None)
         if not group:
-            print("return")
             return None
 
         cmd = UngroupItemsCommand(self.scene, group)
         self.scene().undo_stack.push(cmd)
 
-        print("push ok")
-
         return None
 
     def g_ungroup_selected_items(self):
         return self.g_ungroup_items(self.scene().selectedItems())
-
 
     def g_unselect_items(self) :
         self.scene().clearSelection()
@@ -444,7 +446,6 @@ class GraphicView(QGraphicsView):
                 else:
                     print(f"[WARN] L'item {item} est resizable mais n'a pas de méthode to_dict()")
 
-        print(serialized_items)
         return serialized_items
 
     def g_deserialize_items(self, data_list: list[dict]) -> list[QGraphicsItem]:
@@ -455,9 +456,8 @@ class GraphicView(QGraphicsView):
         deserialized_items = []
 
         for entry in data_list:
-            print(f"entry : {entry}")
+
             item_type = entry.get("type")
-            print(f"item_type : {item_type}")
 
             if not item_type:
                 print(f"[WARN] Entrée JSON sans type : {entry}")
@@ -465,21 +465,16 @@ class GraphicView(QGraphicsView):
 
             class_path = entry.get("data", {}).get("class")
             resizable_class = self.resolve_class_from_path(class_path)
-            print(f"class path : {class_path}")
-            print(f"resizable_class : {resizable_class}")
-            # Récupération de la classe de sérialisation (ex : RectangleSerialize)
-            #serialize_class = elements[item_type]
 
-            # Appel direct au from_dict()
-            #try:
-            item = resizable_class.from_dict(data=entry)
+            try:
+                item = resizable_class.from_dict(data=entry)
 
-            if item:
-                deserialized_items.append(item)
-            else:
-                print(f"[WARN] from_dict() pour '{item_type}' a retourné None")
-            """except Exception as e:
-                print(f"[ERROR] from_dict() failed for '{item_type}': {e}")"""
+                if item:
+                    deserialized_items.append(item)
+                else:
+                    print(f"[WARN] from_dict() pour '{item_type}' a retourné None")
+            except Exception as e:
+                print(f"[ERROR] from_dict() failed for '{item_type}': {e}")
 
         return deserialized_items
 
@@ -496,6 +491,35 @@ class GraphicView(QGraphicsView):
         cls = getattr(module, class_name)
         return cls
 
+    def export_scene_to_pdf(self, scene: QGraphicsScene, filename: str, render_rect: QRectF,
+                            format=QPageSize.PageSizeId.A4, orientation=QPageLayout.Orientation.Portrait):
+
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer.setOutputFileName(filename)
+        printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+        printer.setPageSize(QPageSize(format))
+        printer.setPageOrientation(orientation)
+
+        page_rect = printer.pageRect(QPrinter.Unit.DevicePixel)
+        painter = QPainter(printer)
+
+        t = self.transform()
+        flipped_x = t.m11() < 0
+        flipped_y = t.m22() < 0
+
+        # inversion locale pour le PDF
+        fix = QTransform()
+        fix.scale(-1 if flipped_x else 1, -1 if flipped_y else 1)
+
+        fix.translate(
+            -page_rect.width() if flipped_x else 0,
+            -page_rect.height() if flipped_y else 0
+        )
+
+        painter.setWorldTransform(fix)
+
+        scene.render(painter, target=page_rect, source=render_rect)
+        painter.end()
 
     # -------------------- end serialize/deserialize method ----
 
@@ -526,7 +550,6 @@ class GraphicView(QGraphicsView):
     def g_register_shortcut(self, name: str, key: Qt.Key):
         """Associe une touche Qt à un nom d’outil (ex: Qt.Key_L → 'line')"""
         self.element_manager.add_shortcut(name=name, shortcut=key)
-        print(f"[RACCOURCI] {key.name} → {name}")
 
     # -------------------- end register shortcut tool ----------
 
@@ -536,11 +559,9 @@ class GraphicView(QGraphicsView):
     def g_register_cursor(self, name: str, cursor: Qt.CursorShape | QCursor):
         """Associe un cursor à un nom d’outil"""
         self.element_manager.add_cursor(name=name, cursor=cursor)
-        print(f"[Cursor register] {name} → {cursor.name}")
 
     def g_set_cursor(self, cursor: Qt.CursorShape | QCursor):
         self.setCursor(cursor)
-
 
     # -------------------- end register cursor tool ----------
 
@@ -675,12 +696,9 @@ class GraphicView(QGraphicsView):
     def resizeEvent(self, event):
         super().resizeEvent(event)
 
-        # mise a jour des rulers
         self._update_rulers()
 
         self.annotation_manager.resize_all()
-
-
 
     def scrollContentsBy(self, dx: int, dy: int):
         super().scrollContentsBy(dx, dy)
@@ -706,7 +724,7 @@ class GraphicView(QGraphicsView):
                     self.unsetCursor()
                 else:
                     self.g_set_cursor(item.cursor)
-                print(f"[TOOL] Activation de l'outil '{item.name}' via touche : {key}")
+
                 event.accept()
 
         super().keyPressEvent(event)
@@ -716,7 +734,6 @@ class GraphicView(QGraphicsView):
     # -------------------- Start custom event -------
 
     def emit_tool_changed(self, tool_name: str):
-        print(f"[SIGNAL] Changement d'outil : {tool_name}")
         self.tool_changed.emit(tool_name)
 
     def emit_selection_changed(self):

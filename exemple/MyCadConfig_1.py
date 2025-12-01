@@ -1,10 +1,9 @@
 import json
 import sys
-import uuid
 
 import keyboard
-from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtGui import QPainter, QColor, QFont, QTransform
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPainter, QColor, QFont, QPageSize, QPageLayout
 from PyQt6.QtWidgets import QApplication, QGraphicsItem
 
 from exemple.ItemInfoFormatter import ItemInfoFormatter
@@ -54,15 +53,15 @@ OK -> bug -> resize des groupes non fonctionnel
 OK -> bug -> resize des groupes non fonctionnel supprimé
 OK -> undo des groupes / ungroupe !
 OK -> destruction des groupes
+OK -> Export sous PDF...
 
 historique -> historiser les changements de couleur (move/resize OK) -> A tester
 
 bug -> disparition des item apres un group / ungroup
+resize groupe a tester
+undo des groupe a tester
 
-
-
-Systeme de sauvegarde d'objet
-Export sous PDF...
+legé bug sur le zoom
 
 sauvegarde d'un object
 
@@ -74,7 +73,7 @@ class MyWindow(MainCad):
         # self.graphic_view = GraphicView(self.scene, show_ruler=True)
 
         # Inversion du repere
-        self.g_get_view.g_scale(1, -1)
+        self.g_get_view.g_set_scale(1, -1)
         self.g_get_view.g_set_scene_rectangle(-20, -20, 700, 600)
 
         # Zone de dessin
@@ -244,7 +243,6 @@ class MyWindow(MainCad):
         # self.g_get_view.g_set_fill_color(QColor(0,0,0, 0))
 
         # self.g_get_view.g_change_border_color_items_selected(QColor(0, 255, 0))
-        print("1")
 
         """self.g_get_view.g_add_item(name="ellipse", first_point=QPointF(150, 300),
                         second_point=QPointF(180, 200),
@@ -297,6 +295,8 @@ class MyWindow(MainCad):
 
         keyboard.add_hotkey('escape', self.escape)
 
+        keyboard.add_hotkey('p', self.export_to_pdf)
+
         print("Moteur initialisé !")
 
     def escape(self):
@@ -321,6 +321,20 @@ class MyWindow(MainCad):
         for item in self.g_get_view.g_deserialize_items(data):
             print(f"ITEM ==== {item}")
             self.g_get_view.g_add_QGraphicitem(item)
+
+    def export_to_pdf(self):
+
+        visible_scene_rect = self.g_get_view.mapToScene(self.g_get_view.viewport().rect()).boundingRect()
+
+        print(visible_scene_rect)
+
+        self.g_get_view.export_scene_to_pdf(
+            scene=self.g_get_view.scene(),
+            filename="output.pdf",
+            render_rect=visible_scene_rect,
+            format=QPageSize.PageSizeId.A4,
+            orientation=QPageLayout.Orientation.Landscape
+        )
 
     def group_function(self):
         print("group")

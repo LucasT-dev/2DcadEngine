@@ -29,15 +29,12 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
         self.add_handle("bottom_left", rect.bottomLeft())
         self.add_handle("bottom_right", rect.bottomRight())
 
-        """self.add_handle("left", rect.left)
-        self.add_handle("right", rect.right())"""
         self.update_handles_position()
 
     def update_handles_position(self):
 
         r = self.boundingRect()
 
-        # Coins
         self.handles["top_left"].setPos(r.topLeft())
         self.handles["top_right"].setPos(r.topRight())
         self.handles["bottom_left"].setPos(r.bottomLeft())

@@ -15,17 +15,17 @@ class StyleElement:
     def __init__(self):
 
         # Bordure
-        self._border_color: QColor = QColor(255, 255, 255, 255)
+        self._border_color: QColor = QColor(0, 0, 255, 255)
         self._border_width: int = 2
         self._border_style: Qt.PenStyle = Qt.PenStyle.SolidLine
 
         # Remplissage
-        self._fill_color: QColor = QColor(0, 0, 0, 0)  # transparent par défaut
+        self._fill_color: QColor = QColor(255, 0, 0, 0)  # transparent par défaut
 
         self._z_value = 0
 
         # Text
-        self._text_color = QColor(255, 255, 255, 255)
+        self._text_color = QColor(0, 255, 0, 255)
         self._text: str = "Text"
         self._font = QFont("Arial", 14)
         self._text_width: int = 10

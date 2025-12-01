@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem, QGraphicsLineIt
 
 from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.style.HandleStyle import HandleStyle
-from serialisation.SerializableGraphicsItem import SerializableGraphicsItem
+from graphic_view_element._old.serialisation.SerializableGraphicsItem import SerializableGraphicsItem
 
 
 class Handle(QGraphicsEllipseItem):
