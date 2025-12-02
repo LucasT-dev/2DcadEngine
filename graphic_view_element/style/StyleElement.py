@@ -15,12 +15,12 @@ class StyleElement:
     def __init__(self):
 
         # Bordure
-        self._border_color: QColor = QColor(0, 0, 255, 255)
+        self._border_color: QColor = QColor(255, 255, 255, 255)
         self._border_width: int = 2
         self._border_style: Qt.PenStyle = Qt.PenStyle.SolidLine
 
         # Remplissage
-        self._fill_color: QColor = QColor(255, 0, 0, 0)  # transparent par défaut
+        self._fill_color: QColor = QColor(0, 0, 0, 0)  # transparent par défaut
 
         self._z_value = 0
 
@@ -34,7 +34,6 @@ class StyleElement:
         self._key: int = 0
         self._value = uuid.uuid4()
 
-        self._mode: ToolMode = ToolMode.CLICK_DRAG
         self._tool: str = "Mouse"
 
 

@@ -154,14 +154,10 @@ class VerticalRuler(QWidget):
 
     def set_unit(self, unit: str):
 
-        print("set unit output")
-
         if unit not in ("px", "mm", "cm"):
             raise ValueError("Unit must be 'px', 'mm' or 'cm'")
         self.unit = unit
         self.update()
-
-        print("set unit output")
 
     def _convert_value(self, scene_value: float) -> float:
         """Convertit une coordonnée de scène (mm) dans l’unité choisie."""

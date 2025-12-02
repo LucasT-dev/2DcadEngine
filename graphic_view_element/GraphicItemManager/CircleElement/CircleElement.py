@@ -69,9 +69,6 @@ class CircleElement(ElementObject):
 
         corner = QPointF(first_point.x() + dx, first_point.y() + dy)
 
-        print(f"FIRST POINT : {first_point}")
-        print(f"CORNER POINT : {corner}")
-
         circle = QRectF(first_point, corner).normalized()
 
         pen = QPen(border_color)

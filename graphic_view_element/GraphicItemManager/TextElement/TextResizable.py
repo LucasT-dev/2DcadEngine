@@ -22,7 +22,6 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
     def _create_handles(self):
 
         rect = self.boundingRect()
-        print(rect)
 
         self.add_handle("top_left", rect.topLeft())
         self.add_handle("top_right", rect.topRight())

@@ -31,11 +31,11 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         # Applique la nouvelle ligne
         self.setLine(line)
         # Met à jour la position des Handles
-        self.handles["start"].setPos(line.p1())
-        self.handles["end"].setPos(line.p2())
+        self.update_handles_position()
 
     def update_handles_position(self):
-        print("update handle")
+        self.handles["start"].setPos(self.line().p1())
+        self.handles["end"].setPos(self.line().p2())
 
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""

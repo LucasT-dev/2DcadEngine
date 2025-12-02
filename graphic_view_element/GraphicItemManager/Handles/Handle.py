@@ -9,8 +9,8 @@ class Handle(QGraphicsEllipseItem):
 
         self.setParentItem(parent)
         self.role = role  # Ex: "top-left", "bottom-rigt" etc.
-        self.setBrush(QBrush(QColor(255, 0, 0, 180)))  # Rouge semi-transparent
-        self.setPen(QPen(QColor(0, 0, 0)))
+        self.setBrush(QBrush(QColor(0, 0, 0, 0)))
+        self.setPen(QPen(QColor(0, 204, 204, 255)))
         self.setZValue(1000)  # Toujours au-dessus
         self.setCursor(Qt.CursorShape.SizeAllCursor)
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)

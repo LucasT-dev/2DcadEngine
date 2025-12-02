@@ -27,8 +27,6 @@ class PixmapPreview(PreviewObject):
 
         rect = QRectF(start, end).normalized()
 
-        print(rect)
-
         pixmap = QPixmap(pixmap_path)
         pixmap = pixmap.transformed(QTransform().scale(1, -1))
 

@@ -2,8 +2,8 @@ import json
 import sys
 
 import keyboard
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPainter, QColor, QFont, QPageSize, QPageLayout
+from PyQt6.QtCore import Qt, QPointF
+from PyQt6.QtGui import QPainter, QColor, QFont, QPageSize, QPageLayout, QTransform
 from PyQt6.QtWidgets import QApplication, QGraphicsItem
 
 from exemple.ItemInfoFormatter import ItemInfoFormatter
@@ -224,44 +224,29 @@ class MyWindow(MainCad):
         self.g_get_view.g_register_shortcut(name="group", key=Qt.Key.Key_G)
         self.g_get_view.g_register_cursor(name="group", cursor=Qt.CursorShape.CrossCursor)
 
-        """self.g_get_view.g_register_preview_method("RightLine", RightLinePreview)
-        self.g_get_view.g_register_preview_method("CircleFromCenter", CircleCenterPreview)
-        self.g_get_view.g_register_preview_method("RectangleFromCenter", RectangleCenterPreview)
-        self.g_get_view.g_register_preview_method("SquareFromCenter", SquareCenterPreview)
-        
-        self.g_get_view.g_register_view_element("RightLine", RightLineElement)
-        self.g_get_view.g_register_view_element("CircleFromCenter", CircleCenterElement)
-        self.g_get_view.g_register_view_element("RectangleFromCenter", RectangleCenterElement)
-        self.g_get_view.g_register_view_element("SquareFromCenter", SquareCenterElement)
+        # modifie les propriete par défaut des items
+        self.g_get_view.g_set_default_border_color(QColor(0, 0, 0, 255))
+        self.g_get_view.g_set_default_fill_color(QColor(255, 255, 255, 255))
+        self.g_get_view.g_set_default_border_width(1)
+        self.g_get_view.g_set_default_border_style(Qt.PenStyle.SolidLine)
 
-        self.g_get_view.g_register_shortcut(Qt.Key.Key_I, "RightLine")
-        self.g_get_view.g_register_shortcut(Qt.Key.Key_O, "CircleFromCenter")
-        self.g_get_view.g_register_shortcut(Qt.Key.Key_Y, "RectangleFromCenter")
-        self.g_get_view.g_register_shortcut(Qt.Key.Key_H, "SquareFromCenter")
-        """
-
-        # self.g_get_view.g_set_fill_color(QColor(0,0,0, 0))
-
-        # self.g_get_view.g_change_border_color_items_selected(QColor(0, 255, 0))
-
-        """self.g_get_view.g_add_item(name="ellipse", first_point=QPointF(150, 300),
-                        second_point=QPointF(180, 200),
+        self.g_get_view.g_add_item(name="ellipse", history=True, first_point=QPointF(50, 400),
+                        second_point=QPointF(0, 100),
                         fill_color=QColor("white"),
                         border_color=QColor("blue"),
-                        border_width=1,
+                        border_width=5,
                         border_style=Qt.PenStyle.DashDotDotLine,
                         z_value=100,
-                        key=0,
-                        value="output data 0",
-                        transform = QTransform(),
-                        visibility = True,
-                        scale = 1.0
+                        transform=QTransform(),
+                        visibility=True,
+                        scale=1.0
                                    )
 
-        print("2")
+        self.g_get_view.g_add_item(name="text", history=True, first_point=QPointF(150, 300),
+                        second_point=QPointF(180, 250),
+                        z_value=100)
 
-
-        uuid_test = str(uuid.uuid4())
+        # self.g_get_view.g_change_border_color_items_selected(QColor(0, 255, 0))
 
         self.g_get_view.g_add_item(name="ellipse",
                         first_point=QPointF(150, 300),
@@ -270,15 +255,11 @@ class MyWindow(MainCad):
                         border_width=1,
                         border_style=Qt.PenStyle.DashDotDotLine,
                         fill_color=QColor(0, 0, 255),
-                        key=0, value=uuid_test,
                         z_value=100,
                         transform=QTransform(),
                         visibility=True,
                         scale=1.0
         )
-
-        item = self.g_get_view.g_get_item_by_data(key=0, value=uuid_test)
-        item.setData(3, "Test 3")"""
 
         self.g_get_view.g_set_shortcut_undo_action()
         self.g_get_view.g_set_shortcut_redo_action()
@@ -307,7 +288,6 @@ class MyWindow(MainCad):
 
         data = self.g_get_view.g_serialize_item_scene()
 
-
         with open("test_1.json", "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
@@ -319,14 +299,11 @@ class MyWindow(MainCad):
         # Appeler ta fonction interne qui reconstruit les objets
 
         for item in self.g_get_view.g_deserialize_items(data):
-            print(f"ITEM ==== {item}")
             self.g_get_view.g_add_QGraphicitem(item)
 
     def export_to_pdf(self):
 
         visible_scene_rect = self.g_get_view.mapToScene(self.g_get_view.viewport().rect()).boundingRect()
-
-        print(visible_scene_rect)
 
         self.g_get_view.export_scene_to_pdf(
             scene=self.g_get_view.scene(),
@@ -337,11 +314,9 @@ class MyWindow(MainCad):
         )
 
     def group_function(self):
-        print("group")
         self.g_get_view.g_group_selected_items()
 
     def ungroup_function(self):
-        print("ungroup")
         self.g_get_view.g_ungroup_selected_items()
 
 

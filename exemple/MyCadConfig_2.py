@@ -87,14 +87,14 @@ class MyWidget:
         view.g_register_cursor(name="group", cursor=Qt.CursorShape.CrossCursor)
 
 
-        view.g_add_item(name="line", first_point=QPointF(0, 0),
+        view.g_add_item(name="line", history=True, first_point=QPointF(0, 0),
             second_point=QPointF(100, 100),
             border_color=QColor("blue"),
             border_width=5,
             border_style=Qt.PenStyle.SolidLine,
             z_value=100)
 
-        view.g_add_item(name="rect", first_point=QPointF(50, 100),
+        view.g_add_item(name="rect", history=True, first_point=QPointF(50, 100),
                           second_point=QPointF(100, 150),
                           fill_color=QColor("white"),
                           border_color=QColor("green"),
@@ -102,7 +102,7 @@ class MyWidget:
                           border_style=Qt.PenStyle.SolidLine,
                           z_value=100)
 
-        view.g_add_item(name="ellipse", first_point=QPointF(150, 300),
+        view.g_add_item(name="ellipse", history=True, first_point=QPointF(150, 300),
                           second_point=QPointF(180, 200),
                           fill_color=QColor("white"),
                           border_color=QColor("blue"),
@@ -110,7 +110,7 @@ class MyWidget:
                           border_style=Qt.PenStyle.SolidLine,
                           z_value=100)
 
-        view.g_add_item(name="text", first_point=QPointF(150, 300),
+        view.g_add_item(name="text", history=True, first_point=QPointF(150, 300),
                           second_point=QPointF(180, 250),
                           z_value=100)
 

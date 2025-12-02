@@ -1,5 +1,4 @@
 import importlib
-import logging
 
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF
 from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap, QPageSize, \
@@ -9,10 +8,10 @@ from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene,
     QGraphicsTextItem
 
 from draw.CameraManager import Camera
-from draw.CursorManager import CursorManager
 from draw.AnnotationManager import AnnotationManager
 from draw.GridManager import Grid
-from draw.HistoryManager import RemoveItemCommand, ModifyItemPropertiesCommand, GroupItemsCommand, UngroupItemsCommand
+from draw.HistoryManager import RemoveItemCommand, ModifyItemPropertiesCommand, GroupItemsCommand, UngroupItemsCommand, \
+    AddItemCommand
 from draw.MouseTracker import MouseTracker
 from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
 from graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
@@ -110,17 +109,16 @@ class GraphicView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
 
-        # Composants métiers
-
         self.first_point = None
+        self._drawing = True
+
+        # Composants métiers
         self.grid = Grid(self)
         self.camera = Camera(self)
-        self.cursor_manager = CursorManager()
         self.annotation_manager = AnnotationManager(self)
 
         # Event
         self.mouse_tracker = MouseTracker(self)
-
 
         # Element style
         self.style_element = StyleElement()
@@ -149,8 +147,6 @@ class GraphicView(QGraphicsView):
 
     def g_get_scale(self):
         transform = self.transform()
-        print(f"M11 = {transform.m11()}")
-        print(f"M22 = {transform.m22()}")
         return transform.m11(), transform.m22()
 
     def g_set_scene_rectangle(self, ax: float=-1000, ay: float=-1000, aw: float=2000, ah: float=2000):
@@ -190,17 +186,28 @@ class GraphicView(QGraphicsView):
 
     # -------------------- start style method ------------------
 
-    def g_set_fill_color(self, color: QColor):
+    def g_set_default_fill_color(self, color: QColor):
         self.style_element.set_fill_color(color)
 
-    def g_set_border_color(self, color: QColor):
+    def g_set_default_border_color(self, color: QColor):
         self.style_element.set_border_color(color)
 
-    def g_set_border_width(self, width: int):
+    def g_set_default_border_width(self, width: int):
         self.style_element.set_border_width(width)
 
-    def g_set_border_style(self, border_style: Qt.PenStyle):
+    def g_set_default_border_style(self, border_style: Qt.PenStyle):
         self.style_element.set_border_style(border_style)
+
+    def g_set_default_text(self, text: str):
+        self.style_element.set_text(text)
+
+    def g_set_default_text_color(self, color: QColor):
+        self.style_element.set_text_color(color)
+
+    def g_set_default_text_font(self, font: QFont):
+        self.style_element.set_font(font)
+
+
 
     def g_set_tool(self, tool: str):
         self.style_element.set_tool(tool)
@@ -397,12 +404,22 @@ class GraphicView(QGraphicsView):
 
     # Create custom item by user program
 
-    def g_add_item(self, name: str, **kwargs):
+    def g_add_item(self, name: str, history: bool=True, **kwargs):
         """Ajoute un élément personnalisé à la scène."""
-        self.scene().addItem(self.element_manager.get_element(name).element.create_custom_graphics_item(**kwargs))
+        item = self.element_manager.get_element(name).element.create_custom_graphics_item(**kwargs)
 
-    def g_add_QGraphicitem(self, item: QGraphicsItem):
-        self.scene().addItem(item)
+        if history:
+            cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
+            self.scene().undo_stack.push(cmd)
+        else:
+            self.scene().addItem(item)
+
+    def g_add_QGraphicitem(self, item: QGraphicsItem, history: bool=True):
+        if history :
+            cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
+            self.scene().undo_stack.push(cmd)
+        else :
+            self.scene().addItem(item)
 
     # delete selected item by user program
     def g_remove_selected_item(self):
@@ -607,6 +624,13 @@ class GraphicView(QGraphicsView):
     # -------------------- end history manager ---------------
 
 
+    # -------------------- drawing method --------------------
+    def g_set_can_drawing(self, enable_disable: bool):
+        self._drawing = enable_disable
+
+    def g_get_can_drawing(self) -> bool:
+        return self._drawing
+
     # -------------------- private method --------------------
 
     def _update_rulers(self):
@@ -649,8 +673,12 @@ class GraphicView(QGraphicsView):
 
         self.mouse_tracker.process_mouse_press(event)
 
-        if not self.camera.handle_mouse_press(event):
-            super().mousePressEvent(event)
+        # Si le dessin est désactivé
+        if not self._drawing:
+            if not self.camera.handle_mouse_press(event):
+                super().mousePressEvent(event)
+            self._update_rulers()
+            return
 
         # mise a jour des rulers
         self._update_rulers()
@@ -660,7 +688,10 @@ class GraphicView(QGraphicsView):
             self.first_point = self.mapToScene(event.pos())
             self.element_manager.get_element(self.g_get_tool()).get_preview().create_preview_item(self.mapToScene(event.pos()), self.mapToScene(event.pos()))
             self.scene().addItem(self.element_manager.get_element(self.g_get_tool()).get_preview().get_item())
+            return
 
+        if not self.camera.handle_mouse_press(event):
+            super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
 
@@ -672,13 +703,17 @@ class GraphicView(QGraphicsView):
 
         self.mouse_tracker.process_mouse_release(event)
 
+        if self.element_manager.has_preview(self.g_get_tool()) and self.first_point is not None:
+            self.g_remove_item(self.element_manager.get_element(self.g_get_tool()).get_preview().get_item())
+
+            item = self.element_manager.get_element(self.g_get_tool()).element.create_graphics_item(self.first_point, self.mapToScene(event.pos()))
+            cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
+            self.scene().undo_stack.push(cmd)
+
+            self.first_point = None
+
         if not self.camera.handle_mouse_release(event):
             super().mouseReleaseEvent(event)
-
-        if self.element_manager.has_preview(self.g_get_tool()):
-            self.g_remove_item(self.element_manager.get_element(self.g_get_tool()).get_preview().get_item())
-            self.scene().addItem(self.element_manager.get_element(self.g_get_tool()).element.create_graphics_item(self.first_point, self.mapToScene(event.pos())))
-            self.first_point = None
 
     def mouseDoubleClickEvent(self, event):
         self.mouse_tracker.process_mouse_double_click(event)
@@ -687,11 +722,11 @@ class GraphicView(QGraphicsView):
     def mouseMoveEvent(self, event):
         self.mouse_tracker.process_mouse_move(event)
 
-        if not self.camera.handle_mouse_move(event):
-            super().mouseMoveEvent(event)
-
         if self.element_manager.has_preview(self.g_get_tool()) and self.first_point is not None:
             self.element_manager.get_element(self.g_get_tool()).get_preview().update_item(self.first_point, self.mapToScene(event.pos()))
+
+        if not self.camera.handle_mouse_move(event):
+            super().mouseMoveEvent(event)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
