@@ -5,8 +5,6 @@ from PyQt6.QtCore import QPointF
 from graphic_view_element.GraphicItemManager.Handles.Handle import Handle
 
 
-
-
 class ResizableGraphicsItem:
 
     def __init__(self):

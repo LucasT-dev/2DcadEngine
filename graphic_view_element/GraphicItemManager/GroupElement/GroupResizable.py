@@ -1,9 +1,11 @@
 from PyQt6.QtCore import QPointF, QRectF
 from PyQt6.QtGui import QTransform
-from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphicsItem
+from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphicsItem, QGraphicsEllipseItem, \
+    QGraphicsLineItem, QGraphicsTextItem
 
 from adapter import AdpaterItem
 from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+
 
 class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
 
@@ -51,8 +53,184 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         self.handles["bottom_left"].setPos(rect.bottomLeft())
         self.handles["bottom_right"].setPos(rect.bottomRight())
 
-    def handle_moved(self, role: str, new_pos: QPointF):
-        pass
+    def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
+
+        from graphic_view_element.GraphicItemManager.SquareElement.SquareResizable import SquareResizable
+        from graphic_view_element.GraphicItemManager.CircleElement.CircleResizable import CircleResizable
+        from graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
+
+        local_pos = self.mapFromScene(event.scenePos())
+        rect = QRectF(self.rect())
+        dec_x = 0
+        dec_y = 0
+
+        if role == "top_left":
+            dec_x = rect.topLeft().x() - local_pos.x()
+            dec_y = rect.topLeft().y() - local_pos.y()
+            rect.setTopLeft(local_pos)
+
+        elif role == "top_right":
+            dec_x = rect.topRight().x() - local_pos.x()
+            dec_y = rect.topRight().y() - local_pos.y()
+            rect.setTopRight(local_pos)
+
+        elif role == "bottom_left":
+            dec_x = rect.bottomLeft().x() - local_pos.x()
+            dec_y = rect.bottomLeft().y() - local_pos.y()
+            rect.setBottomLeft(local_pos)
+
+        elif role == "bottom_right":
+            dec_x = rect.bottomRight().x() - local_pos.x()
+            dec_y = rect.bottomRight().y() - local_pos.y()
+            rect.setBottomRight(local_pos)
+
+        rect = rect.normalized()
+        self.setRect(rect)
+        self.update_handles_position()
+
+        print(dec_x)
+        print(dec_y)
+
+        for item in self._items:
+            print(item)
+
+            if isinstance(item, SquareResizable) or isinstance(item, CircleResizable) :
+
+                rect = QRectF(item.rect())
+                dec_y_temp = dec_y
+                dec_x_temp = dec_x
+
+                if dec_x < dec_y:
+                    dec_y_temp = dec_x
+                else :
+                    dec_x_temp = dec_y
+
+                if role == "top_left":
+                    rect.setTopLeft(QPointF(rect.topLeft().x() - dec_x_temp, rect.topLeft().y() - dec_y_temp))
+                elif role == "top_right":
+                    rect.setTopRight(QPointF(rect.topRight().x() - dec_x_temp, rect.topRight().y() - dec_y_temp))
+                elif role == "bottom_left":
+                    rect.setBottomLeft(QPointF(rect.bottomLeft().x() - dec_x_temp, rect.bottomLeft().y() - dec_y_temp))
+                elif role == "bottom_right":
+                    rect.setBottomRight(QPointF(rect.bottomRight().x() - dec_x_temp, rect.bottomRight().y() - dec_y_temp))
+
+                rect = rect.normalized()
+                item.setRect(rect)
+
+            elif isinstance(item, QGraphicsRectItem) or isinstance(item, QGraphicsEllipseItem) :
+                rect = item.mapToParent(item.rect()).boundingRect()
+
+                print(rect.topLeft().x())
+                print(rect.topLeft().y())
+
+                if role == "top_left":
+                    rect.setTopLeft(QPointF(rect.topLeft().x() - dec_x, rect.topLeft().y() - dec_y))
+                elif role == "top_right":
+                    rect.setTopRight(QPointF(rect.topRight().x() - dec_x, rect.topRight().y() - dec_y))
+                elif role == "bottom_left":
+                    rect.setBottomLeft(QPointF(rect.bottomLeft().x() - dec_x, rect.bottomLeft().y() - dec_y))
+                elif role == "bottom_right":
+                    rect.setBottomRight(QPointF(rect.bottomRight().x() - dec_x, rect.bottomRight().y() - dec_y))
+
+                rect = rect.normalized()
+
+                rect = self.clamp_rect_to_group(rect)
+
+                item.setPos(rect.topLeft())
+                item.setRect(0, 0, rect.width(), rect.height())
+
+            elif isinstance(item, PixmapResizable):
+
+                pixmap_rect = QRectF(item.pos(), item.boundingRect().size())
+
+                if role == "top_left":
+                    pixmap_rect.setTopLeft(QPointF(pixmap_rect.topLeft().x() - dec_x, pixmap_rect.topLeft().y() - dec_y))
+                elif role == "top_right":
+                    pixmap_rect.setTopRight(QPointF(pixmap_rect.topRight().x() - dec_x, pixmap_rect.topRight().y() - dec_y))
+                elif role == "bottom_left":
+                    pixmap_rect.setBottomLeft(QPointF(pixmap_rect.bottomLeft().x() - dec_x, pixmap_rect.bottomLeft().y() - dec_y))
+                elif role == "bottom_right":
+                    pixmap_rect.setBottomRight(QPointF(pixmap_rect.bottomRight().x() - dec_x, pixmap_rect.bottomRight().y() - dec_y))
+
+                pixmap_rect = pixmap_rect.normalized()
+
+                pixmap_rect = self.clamp_rect_to_group(pixmap_rect)
+
+                item.setPos(pixmap_rect.topLeft())
+
+                item.resize_pixmap(pixmap_rect.width(), pixmap_rect.height())
+
+            elif isinstance(item, QGraphicsLineItem):
+
+                line = item.line()
+
+                # 1. Points globaux SANS normalisation
+                p1 = item.mapToParent(line.p1())
+                p2 = item.mapToParent(line.p2())
+
+                # 2. Créer un rect brut SANS normalisation
+                x1, y1 = p1.x(), p1.y()
+                x2, y2 = p2.x(), p2.y()
+
+                rect = QRectF(x1, y1, x2 - x1, y2 - y1)
+
+                # 3. Déplacement des coins selon le handle
+                if role == "top_left":
+                    rect.setTopLeft(QPointF(rect.topLeft().x() - dec_x, rect.topLeft().y() - dec_y))
+                elif role == "top_right":
+                    rect.setTopRight(QPointF(rect.topRight().x() - dec_x, rect.topRight().y() - dec_y))
+                elif role == "bottom_left":
+                    rect.setBottomLeft(QPointF(rect.bottomLeft().x() - dec_x, rect.bottomLeft().y() - dec_y))
+                elif role == "bottom_right":
+                    rect.setBottomRight(QPointF(rect.bottomRight().x() - dec_x, rect.bottomRight().y() - dec_y))
+
+                # 4. Clamp dans le groupe
+                rect = self.clamp_rect_to_group(rect)
+
+                # 5. Mise à jour de la ligne en coordonnées locales
+                item.setPos(rect.topLeft())
+
+                new_p1 = QPointF(0, 0)
+                new_p2 = QPointF(rect.width(), rect.height())
+
+                item.setLine(new_p1.x(), new_p1.y(), new_p2.x(), new_p2.y())
+
+            elif isinstance(item, QGraphicsTextItem):
+
+                # 1 → récupérer le bounding rect initial
+                text_rect = QRectF(item.pos(), item.boundingRect().size())
+
+                # 2 → mise à jour selon le handle déplacé
+                if role == "top_left":
+                    text_rect.setTopLeft(QPointF(text_rect.topLeft().x() - dec_x, text_rect.topLeft().y() - dec_y))
+                elif role == "top_right":
+                    text_rect.setTopRight(QPointF(text_rect.topRight().x() - dec_x, text_rect.topRight().y() - dec_y))
+                elif role == "bottom_left":
+                    text_rect.setBottomLeft(QPointF(text_rect.bottomLeft().x() - dec_x, text_rect.bottomLeft().y() - dec_y))
+                elif role == "bottom_right":
+                    text_rect.setBottomRight(QPointF(text_rect.bottomRight().x() - dec_x, text_rect.bottomRight().y() - dec_y))
+
+                # 3 → Normalisation (OK pour du texte contrairement aux lignes)
+                text_rect = text_rect.normalized()
+
+                # 4 → Clamp aux limites du groupe
+                text_rect = self.clamp_rect_to_group(text_rect)
+
+                # 5 → appliquer position
+                item.setPos(text_rect.topLeft())
+
+                # 6 → Redimensionnement du texte
+                # Le fonctionnement normal Qt : on met un "text width"
+                item.setTextWidth(text_rect.width())
+
+                # 7 → Si tu veux que la hauteur s’adapte automatiquement :
+                #     Qt recalcule la hauteur du texte automatiquement selon la largeur
+                #     Donc aucune méthode "setHeight()" n’est nécessaire.
+
+                # IMPORTANT : forcer mise à jour interne
+                item.update()
+
+
 
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""
@@ -247,3 +425,26 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         group.setTransform(transform)
 
         return group
+
+    def clamp_rect_to_group(self, child_rect: QRectF) -> QRectF:
+        """Contraint un QRectF enfant à rester dans les limites du groupe."""
+        group_rect = self.rect()
+        clamped = QRectF(child_rect)
+
+        # Corrige la position X
+        if clamped.left() < group_rect.left():
+            dx = group_rect.left() - clamped.left()
+            clamped.translate(dx, 0)
+        if clamped.right() > group_rect.right():
+            dx = group_rect.right() - clamped.right()
+            clamped.translate(dx, 0)
+
+        # Corrige la position Y
+        if clamped.top() < group_rect.top():
+            dy = group_rect.top() - clamped.top()
+            clamped.translate(0, dy)
+        if clamped.bottom() > group_rect.bottom():
+            dy = group_rect.bottom() - clamped.bottom()
+            clamped.translate(0, dy)
+
+        return clamped

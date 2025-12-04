@@ -16,8 +16,8 @@ class ItemInfoFormatter:
             "Border Style": {item.pen().style().name for item in items if hasattr(item, "pen")},
             "Épaisseur": {item.pen().width() for item in items if hasattr(item, "pen")},
             "Fill color": {self._color_rgb(item.brush().color()) for item in items if hasattr(item, "brush")},
-            "Width": self._dimensions(items, "width"),
-            "Height": self._dimensions(items, "height"),
+            #"Width": self._dimensions(items, "width"),
+            #"Height": self._dimensions(items, "height"),
             "Rotation": self._rotation(items),
             "Scale": self._scale(items)
         }
@@ -58,7 +58,7 @@ class ItemInfoFormatter:
         for item in items:
             if hasattr(item, "rect"):
                 rect = item.rect()
-                val = getattr(rect, dim_type, lambda: None)()
+                val = getattr(rect, dim_type, lambda: 0)()
                 if val is not None:
                     dims.add(round(val, 2))
             elif hasattr(item, "line"):
@@ -67,6 +67,8 @@ class ItemInfoFormatter:
                     dims.add(abs(line.x2() - line.x1()))
                 elif dim_type == "height":
                     dims.add(abs(line.y2() - line.y1()))
+            else :
+                dims.add("undefine")
         return dims
 
     def _rotation(self, items) -> set:

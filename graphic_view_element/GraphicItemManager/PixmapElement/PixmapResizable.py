@@ -7,7 +7,7 @@ from draw.HistoryManager import ModifyItemCommand
 from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 
 
-class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
+class PixmapResizable(QGraphicsPixmapItem, ResizableGraphicsItem):
 
     def __init__(self, pixmap: QPixmap, parent=None):
 
@@ -18,7 +18,7 @@ class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
 
         self._original_pixmap = pixmap
 
-        self._rect = QRectF(0, 0, pixmap.width(), pixmap.height())
+        self.rect = QRectF(0, 0, pixmap.width(), pixmap.height())
 
         self.update_handles_position()
 
@@ -47,7 +47,7 @@ class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
 
         # Convertit la position de la scène vers le repère local
         local_pos = self.mapFromScene(event.scenePos())
-        rect = QRectF(self._rect)
+        rect = QRectF(self.rect)
 
         if role == "top_left":
             rect.setTopLeft(local_pos)
@@ -59,7 +59,7 @@ class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
             rect.setBottomRight(local_pos)
 
         rect = rect.normalized()
-        self._rect = rect
+        self.rect = rect
 
         # Met à jour le pixmap redimensionné
         scaled_pixmap = self._original_pixmap.scaled(
@@ -70,8 +70,6 @@ class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
 
         self.setPixmap(scaled_pixmap)
         self.setOffset(QPointF(rect.x(), rect.y()))
-        self.update_handles_position()
-
         self.update_handles_position()
 
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
@@ -87,7 +85,7 @@ class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
         self.save_history_geometry()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
-        """Gestion de l'appui sur l'ellipse."""
+        """Gestion de l'appui sur le pixmap."""
         self.setSelected(True)
         self.select_handle(True)
 
@@ -96,13 +94,13 @@ class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
-        """Gestion du relâchement de l'ellipse."""
+        """Gestion du relâchement de le pixmap."""
         self.save_history_geometry()
 
         super().mouseReleaseEvent(event)
 
     def itemChange(self, change, value):
-        """Gestion des changements d'état de l'ellipse."""
+        """Gestion des changements d'état du pixmap."""
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
             selected = bool(value)
             self.select_handle(selected)
@@ -184,3 +182,17 @@ class PixmapResizable(ResizableGraphicsItem, QGraphicsPixmapItem):
         item.setTransform(transform)
 
         return item
+
+    def rect(self):
+        return self.rect
+
+    def resize_pixmap(self, w, h):
+        if w < 1: w = 1
+        if h < 1: h = 1
+
+        scaled = self._original_pixmap.scaled(
+            int(w), int(h),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+        self.setPixmap(scaled)

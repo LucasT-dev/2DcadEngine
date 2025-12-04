@@ -665,33 +665,37 @@ class GraphicView(QGraphicsView):
 
     def mousePressEvent(self, event):
 
+        print("200")
+
         # Ignorer si clic molette
         if event.button() == Qt.MouseButton.MiddleButton:
             self.mouse_tracker.process_mouse_press(event)
             self.camera.handle_mouse_press(event)  # facultatif
             return
-
+        print("201")
         self.mouse_tracker.process_mouse_press(event)
-
+        print("202")
         # Si le dessin est désactivé
         if not self._drawing:
             if not self.camera.handle_mouse_press(event):
                 super().mousePressEvent(event)
             self._update_rulers()
             return
-
+        print("203")
         # mise a jour des rulers
         self._update_rulers()
-
+        print("204")
         # Création de la preview
         if self.element_manager.has_preview(self.g_get_tool()):
             self.first_point = self.mapToScene(event.pos())
             self.element_manager.get_element(self.g_get_tool()).get_preview().create_preview_item(self.mapToScene(event.pos()), self.mapToScene(event.pos()))
             self.scene().addItem(self.element_manager.get_element(self.g_get_tool()).get_preview().get_item())
             return
-
+        print("205")
         if not self.camera.handle_mouse_press(event):
             super().mousePressEvent(event)
+
+        print("206")
 
     def mouseReleaseEvent(self, event):
 
