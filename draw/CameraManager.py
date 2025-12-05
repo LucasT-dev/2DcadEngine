@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QGraphicsView
 class CameraConfig:
     """Configuration de la caméra"""
     zoom_enabled: bool = True  # Activer/désactiver le zoom
-    zoom_factor: float = 1.15  # Facteur de zoom par cran de molette
+    zoom_factor: float = 1.10  # Facteur de zoom par cran de molette
     min_zoom: float = 0.1  # Niveau minimum de zoom
     max_zoom: float = 10.0  # Niveau maximum de zoom
     zoom_to_cursor: bool = True  # Zoom centré sur le curseur
@@ -144,7 +144,7 @@ class Camera:
             raise ValueError("Zoom percent must be positive")
 
         # Pixels que devrait occuper 1 mm scène à l’écran
-        pixels_per_mm_real = self.view.logicalDpiX() / 25.4
+        pixels_per_mm_real = self.view.logicalDpiX() / 25.7 #25.4
 
         # Facteur de transformation souhaité
         target_scale = (pixels_per_mm_real) * (percent / 100.0)

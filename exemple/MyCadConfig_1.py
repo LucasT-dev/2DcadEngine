@@ -1,3 +1,4 @@
+import faulthandler
 import json
 import sys
 
@@ -54,16 +55,14 @@ OK -> bug -> resize des groupes non fonctionnel supprimé
 OK -> undo des groupes / ungroupe !
 OK -> destruction des groupes
 OK -> Export sous PDF...
+OK -> resize groupe a tester
+OK -> bug -> les objects bouge lors de la création d'un item
+OK -> bug -> pas de undo sur la création d'item
 
 historique -> historiser les changements de couleur (move/resize OK) -> A tester
 
 bug -> disparition des item apres un group / ungroup
-resize groupe a tester
-undo des groupe a tester
-
-legé bug sur le zoom
-
-sauvegarde d'un object
+legée bug sur le zoom
 
 """
 class MyWindow(MainCad):
@@ -126,7 +125,7 @@ class MyWindow(MainCad):
             color=QColor(0, 255, 0),  # Axes verts
             width=2,  # Épaisseur de 3 pixels
             name="X",  # Nom personnalisé
-            axis_length=30,  # Axes de 300 pixels
+            axis_length=15,  # Axes de 15 pixels
             x_label="X"  # Label personnalisé pour X
 
         )
@@ -136,7 +135,7 @@ class MyWindow(MainCad):
             color=QColor(255, 0, 0),  # Axes verts
             width=2,  # Épaisseur de 3 pixels
             name="Y",  # Nom personnalisé
-            axis_length=30,  # Axes de 300 pixels
+            axis_length=15,  # Axes de 15 pixels
             y_label="Y",  # Label personnalisé pour Y
             text_rotate=180
         )
@@ -156,7 +155,7 @@ class MyWindow(MainCad):
         self.g_get_view.camera.set_zoom_limits(0.8, 10.0)
         self.g_get_view.camera.set_zoom_factor(1.2)  # 1.2
         self.g_get_view.camera.set_zoom_to_cursor(True)
-        self.g_get_view.camera.zoom_to(1.0)
+        #self.g_get_view.camera.zoom_to(1.0)
 
         # Définir unité des règle (mm, cm, pixel)
         self.g_get_view.g_set_unit("mm")
@@ -234,7 +233,7 @@ class MyWindow(MainCad):
                         second_point=QPointF(0, 100),
                         fill_color=QColor("white"),
                         border_color=QColor("blue"),
-                        border_width=5,
+                        border_width=2,
                         border_style=Qt.PenStyle.DashDotDotLine,
                         z_value=100,
                         transform=QTransform(),
@@ -371,6 +370,9 @@ class MyWindow(MainCad):
 
 
 if __name__ == "__main__":
+
+    faulthandler.enable(all_threads=True)
+
     app = QApplication(sys.argv)
     window = MyWindow()
     window.show()

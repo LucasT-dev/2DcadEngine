@@ -197,10 +197,8 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
 
             elif isinstance(item, QGraphicsTextItem):
 
-                # 1 → récupérer le bounding rect initial
                 text_rect = QRectF(item.pos(), item.boundingRect().size())
 
-                # 2 → mise à jour selon le handle déplacé
                 if role == "top_left":
                     text_rect.setTopLeft(QPointF(text_rect.topLeft().x() - dec_x, text_rect.topLeft().y() - dec_y))
                 elif role == "top_right":
@@ -210,27 +208,15 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
                 elif role == "bottom_right":
                     text_rect.setBottomRight(QPointF(text_rect.bottomRight().x() - dec_x, text_rect.bottomRight().y() - dec_y))
 
-                # 3 → Normalisation (OK pour du texte contrairement aux lignes)
                 text_rect = text_rect.normalized()
 
-                # 4 → Clamp aux limites du groupe
                 text_rect = self.clamp_rect_to_group(text_rect)
 
-                # 5 → appliquer position
                 item.setPos(text_rect.topLeft())
 
-                # 6 → Redimensionnement du texte
-                # Le fonctionnement normal Qt : on met un "text width"
                 item.setTextWidth(text_rect.width())
 
-                # 7 → Si tu veux que la hauteur s’adapte automatiquement :
-                #     Qt recalcule la hauteur du texte automatiquement selon la largeur
-                #     Donc aucune méthode "setHeight()" n’est nécessaire.
-
-                # IMPORTANT : forcer mise à jour interne
                 item.update()
-
-
 
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""
