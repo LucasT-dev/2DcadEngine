@@ -1,0 +1,3 @@
+[submodule "2DcadEngine"]
+	path = 2DcadEngine
+	url = https://github.com/LucasT-dev/2DcadEngine
