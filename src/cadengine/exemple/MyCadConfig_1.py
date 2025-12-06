@@ -1,4 +1,3 @@
-import faulthandler
 import json
 import sys
 
