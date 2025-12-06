@@ -2,11 +2,13 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QUndoStack
 from PyQt6.QtWidgets import QMainWindow
 
-from src.cadengine.scene.GraphicScene import GraphicScene
-from src.cadengine.scene.GraphicView import GraphicViewContainer
+from cadengine.scene.GraphicView import GraphicViewContainer
 
+from src.cadengine.scene.GraphicScene import GraphicScene
 
 class MainCad(QMainWindow):
+
+
 
     def __init__(self, configurator=None, show_ruler=True):
         super().__init__()

@@ -371,8 +371,6 @@ class MyWindow(MainCad):
 
 if __name__ == "__main__":
 
-    faulthandler.enable(all_threads=True)
-
     app = QApplication(sys.argv)
     window = MyWindow()
     window.show()

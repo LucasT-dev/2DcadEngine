@@ -1,3 +1,17 @@
 [project]
 name = "cadengine"
 version = "0.1.0"
+description = "2D CAD engine"
+authors = [
+    { name = "Lucas.t" }
+]
+
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.0",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
