@@ -167,7 +167,7 @@ class MyWindow(MainCad):
         self.g_get_view.mouse_tracker.mouseMoved.connect(lambda state: self.mousse_move(state["scene_pos"]))
         self.g_get_view.mouse_tracker.mouseMoved.connect(lambda state: self.update_history(self._scene))
         self.g_get_view.tool_changed.connect(lambda tool: self.change_tool(tool))
-        self.g_get_view.selection_changed.connect(lambda selection: self.selection_changed(selection))
+        self.g_get_view.on_selection_change_event.connect(lambda selection: self.selection_changed(selection))
 
         # self.g_get_view.mouse_tracker.mouseClicked.connect(lambda state: print("Click", state["buttons"]))
         # self.g_get_view.mouse_tracker.mouseDoubleClicked.connect(lambda state: print("Double click"))
