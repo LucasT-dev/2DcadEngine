@@ -73,11 +73,12 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur l'ellipse."""
 
-        self.setSelected(True)
-        self.select_handle(True)
-        self.update_handles_position()
+        if self.flags().__contains__(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable):
+            self.setSelected(True)
+            self.select_handle(True)
+            self.update_handles_position()
 
-        self.save_item_geometry()
+            self.save_item_geometry()
 
         super().mousePressEvent(event)
 

@@ -86,10 +86,12 @@ class PixmapResizable(QGraphicsPixmapItem, ResizableGraphicsItem):
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur le pixmap."""
-        self.setSelected(True)
-        self.select_handle(True)
 
-        self.save_item_geometry()
+        if self.flags().__contains__(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable):
+            self.setSelected(True)
+            self.select_handle(True)
+
+            self.save_item_geometry()
 
         super().mousePressEvent(event)
 

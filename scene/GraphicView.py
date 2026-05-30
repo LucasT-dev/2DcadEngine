@@ -209,6 +209,12 @@ class GraphicView(QGraphicsView):
     def g_set_default_text_font(self, font: QFont):
         self.style_element.set_font(font)
 
+    def g_set_default_key(self, key: int):
+        self.style_element.set_key(key)
+
+    def g_set_default_value(self, value):
+        self.style_element.set_value(value)
+
 
 
     def g_set_tool(self, tool: str):
@@ -656,6 +662,9 @@ class GraphicView(QGraphicsView):
 
     # -------------------- EVENT --------------------
     def wheelEvent(self, event):
+
+        zoom_level = self.transform().m11()
+
         self.mouse_tracker.process_wheel(event)
 
         if not self.camera.handle_wheel(event):
@@ -663,6 +672,17 @@ class GraphicView(QGraphicsView):
 
         # mise a jour des rulers
         self._update_rulers()
+
+        self._update_all_handles_size(zoom_level)
+
+    def _update_all_handles_size(self, zoom_level: float):
+
+
+
+        for item in self.g_get_items_selected():
+            if isinstance(item, ResizableGraphicsItem):
+                print(item)
+                item.update_handles_size(zoom_level)
 
 
     def mousePressEvent(self, event):
@@ -673,14 +693,17 @@ class GraphicView(QGraphicsView):
             self.camera.handle_mouse_press(event)  # facultatif
             return
         self.mouse_tracker.process_mouse_press(event)
+
         # Si le dessin est désactivé
         if not self._drawing:
             if not self.camera.handle_mouse_press(event):
                 super().mousePressEvent(event)
             self._update_rulers()
             return
+
         # mise a jour des rulers
         self._update_rulers()
+
         # Création de la preview
         if self.element_manager.has_preview(self.g_get_tool()):
             self.first_point = self.mapToScene(event.pos())

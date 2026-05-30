@@ -51,23 +51,27 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.save_history_geometry()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
-        """Gestion de l'appui sur l'ellipse."""
+        """Gestion de l'appui sur ligne."""
 
-        self.setSelected(True)
-        self.select_handle(True)
+        if self.flags().__contains__(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable):
 
-        self.save_item_geometry()
+            self.setSelected(True)
+            self.select_handle(True)
+
+            self.update_handles_size(self.transform().m11())
+
+            self.save_item_geometry()
 
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
-        """Gestion du relâchement de l'ellipse."""
+        """Gestion du relâchement de la ligne."""
         super().mouseReleaseEvent(event)
 
         self.save_history_geometry()
 
     def itemChange(self, change, value):
-        """Gestion des changements d'état de l'ellipse."""
+        """Gestion des changements d'état de la ligne."""
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
             selected = bool(value)
             self.select_handle(selected)
@@ -116,7 +120,7 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
     @classmethod
     def from_dict(cls, data: dict):
 
-        from graphic_view_element.GraphicItemManager.LineElement.LineElement import LineElement
+        from libs.cadengine.graphic_view_element.GraphicItemManager.LineElement.LineElement import LineElement
 
         pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])
         item_data = data["data"]

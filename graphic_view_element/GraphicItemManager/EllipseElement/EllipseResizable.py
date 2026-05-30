@@ -70,10 +70,12 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur l'ellipse."""
-        self.setSelected(True)
-        self.select_handle(True)
 
-        self.save_item_geometry()
+        if self.flags().__contains__(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable):
+            self.setSelected(True)
+            self.select_handle(True)
+
+            self.save_item_geometry()
 
         super().mousePressEvent(event)
 
@@ -133,7 +135,7 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
     @classmethod
     def from_dict(cls, data: dict):
 
-        from graphic_view_element.GraphicItemManager.EllipseElement.EllipseElement import EllipseElement
+        from libs.cadengine.graphic_view_element.GraphicItemManager.EllipseElement.EllipseElement import EllipseElement
 
         geometry = data["geometry"]
         pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])

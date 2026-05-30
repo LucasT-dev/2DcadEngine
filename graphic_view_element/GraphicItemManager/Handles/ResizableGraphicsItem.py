@@ -44,6 +44,10 @@ class ResizableGraphicsItem:
         """À implémenter par les sous-classes."""
         raise NotImplementedError("Cette méthode doit être implémentée.")
 
+    def update_handles_size(self, zoom_level: float):
+        """Redimensionne tous les handles selon le zoom."""
+        for handle in self.handles.values():
+            handle.update_size(zoom_level)
 
     @abstractmethod
     def to_dict(self) -> dict:
