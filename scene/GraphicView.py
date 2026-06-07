@@ -677,11 +677,8 @@ class GraphicView(QGraphicsView):
 
     def _update_all_handles_size(self, zoom_level: float):
 
-
-
         for item in self.g_get_items_selected():
             if isinstance(item, ResizableGraphicsItem):
-                print(item)
                 item.update_handles_size(zoom_level)
 
 
@@ -690,7 +687,7 @@ class GraphicView(QGraphicsView):
         # Ignorer si clic molette
         if event.button() == Qt.MouseButton.MiddleButton:
             self.mouse_tracker.process_mouse_press(event)
-            self.camera.handle_mouse_press(event)  # facultatif
+            self.camera.handle_mouse_press(event)
             return
         self.mouse_tracker.process_mouse_press(event)
 
