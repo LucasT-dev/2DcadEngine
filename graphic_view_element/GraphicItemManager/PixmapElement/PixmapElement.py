@@ -5,6 +5,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtWidgets import QGraphicsItem, QLabel
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import DEFAULT_STYLE, HandleStyle
 from libs.cadengine.graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
 
 
@@ -14,7 +15,7 @@ class PixmapElement(ElementObject):
 
         image_path = "C:\Bureau\\free-nature-images.jpg"
         if not os.path.exists(image_path):
-            print("⚠ Image par défaut introuvable, utilisez un chemin valide.")
+            print("Image par défaut introuvable, utilisez un chemin valide.")
             return
 
         pixmap = QPixmap(image_path)
@@ -58,6 +59,7 @@ class PixmapElement(ElementObject):
                                     transform: QTransform = QTransform(),
                                     visibility: bool = True,
                                     scale: float = 1.0,
+                                    handle_style: HandleStyle = DEFAULT_STYLE,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -72,6 +74,8 @@ class PixmapElement(ElementObject):
         item = PixmapResizable(pixmap)
         item.setPos(target_rect.topLeft())
         item.setZValue(z_value)
+
+        item.set_handle_style(handle_style)
 
         item.setFlags(flags)
         item.setData(key, value)

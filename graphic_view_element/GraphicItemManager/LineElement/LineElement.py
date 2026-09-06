@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtGui import QPen, QColor, QTransform
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 from libs.cadengine.graphic_view_element.GraphicItemManager.LineElement.LineResizable import LineResizable
 
 
@@ -16,9 +17,11 @@ class LineElement(ElementObject):
         pen.setWidth(self.get_style().get_border_width())
         pen.setStyle(self.get_style().get_border_style())
 
-        item = LineResizable(first_point.x(), first_point.y(), second_point.x(), second_point.y()) # QGraphicsLineItem(self.start.x(), self.start.y(), self.end.x(), self.end.y())
+        item = LineResizable(first_point.x(), first_point.y(), second_point.x(), second_point.y())
         item.setPen(pen)
         item.setZValue(self.get_style().get_z_value())
+
+        item.set_snap_enable(True)
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -39,6 +42,7 @@ class LineElement(ElementObject):
                                     transform: QTransform = QTransform(),
                                     visibility: bool = True,
                                     scale: float = 1.0,
+                                    handle_style: HandleStyle = DEFAULT_STYLE,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -50,6 +54,8 @@ class LineElement(ElementObject):
         item = LineResizable(first_point.x(), first_point.y(), second_point.x(), second_point.y())
         item.setPen(pen)
         item.setZValue(z_value)
+
+        item.set_handle_style(handle_style)
 
         item.setFlags(flags)
 

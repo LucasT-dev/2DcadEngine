@@ -231,25 +231,25 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         self.save_history_geometry()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
-        """Gestion de l'appui sur l'ellipse."""
+        """Gestion de l'appui sur un group."""
         self.setSelected(True)
         self.select_handle(True)
 
         for i in self._items:
             i.select_handle(False)
 
-        self.save_item_geometry()
+        self.begin_move_tracking()
 
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
-        """Gestion du relâchement de l'ellipse."""
-        self.save_history_geometry()
+        """Gestion du relâchement sur un group."""
+        self.end_move_tracking()
 
         super().mouseReleaseEvent(event)
 
     def itemChange(self, change, value):
-        """Gestion des changements d'état de l'ellipse."""
+        """Gestion des changements d'état du group."""
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
             selected = bool(value)
             self.select_handle(selected)

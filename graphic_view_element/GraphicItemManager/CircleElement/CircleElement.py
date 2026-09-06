@@ -6,6 +6,7 @@ from PyQt6.QtGui import QPen, QColor, QBrush, QTransform
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.CircleElement.CircleResizable import CircleResizable
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
 
 class CircleElement(ElementObject):
@@ -56,6 +57,7 @@ class CircleElement(ElementObject):
                                     transform: QTransform = QTransform(),
                                     visibility: bool = True,
                                     scale: float = 1.0,
+                                    handle_style: HandleStyle = DEFAULT_STYLE,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -84,6 +86,8 @@ class CircleElement(ElementObject):
         item.setTransform(transform)
         item.setVisible(visibility)
         item.setScale(scale)
+
+        item.set_handle_style(handle_style)
 
         item.setFlags(flags)
 

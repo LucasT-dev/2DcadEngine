@@ -39,9 +39,14 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
         """Appelé quand un handle est déplacé (par Handle)."""
         # Convertit la position de la scène vers le repère local
-        local_pos = self.mapFromScene(event.scenePos())
+        scene_pos = event.scenePos()
+        local_pos = self.mapFromScene(scene_pos)
         rect = QRectF(self.rect())
 
+        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, exclude_item=self)
+
+        if snap_point_other_q_graphics_item:
+            local_pos = self.mapFromScene(snap_point_other_q_graphics_item)
         if role == "top_left":
             rect.setTopLeft(local_pos)
         elif role == "top_right":
@@ -75,13 +80,13 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
             self.setSelected(True)
             self.select_handle(True)
 
-            self.save_item_geometry()
+            self.begin_move_tracking()
 
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement de l'ellipse."""
-        self.save_history_geometry()
+        self.end_move_tracking()
 
         super().mouseReleaseEvent(event)
 

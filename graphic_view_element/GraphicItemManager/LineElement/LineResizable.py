@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QPointF
+from PyQt6.QtCore import QPointF, QLineF
 from PyQt6.QtGui import QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsSceneMouseEvent, QGraphicsItem
 
@@ -19,18 +19,30 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.add_handle("end", self.line().p2())
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
-        """Mise à jour de la ligne lorsque le handle est déplacé."""
         new_pos = self.mapFromScene(event.scenePos())
-        line = self.line()
+        line: QLineF = self.line()
+        scene_pos = event.scenePos()
+
+        # Point fixe = l'autre extrémité de la ligne
+        if role == "start":
+            fixed = self.mapToScene(line.p2())
+        else:
+            fixed = self.mapToScene(line.p1())
+
+        snap_angle = self._find_angle_auto(fixed, scene_pos)
+        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, exclude_item=self)
+
+        if snap_point_other_q_graphics_item:
+            new_pos = self.mapFromScene(snap_point_other_q_graphics_item)
+        elif snap_angle:
+            new_pos = self.mapFromScene(snap_angle)
 
         if role == "start":
             line.setP1(new_pos)
         elif role == "end":
             line.setP2(new_pos)
 
-        # Applique la nouvelle ligne
         self.setLine(line)
-        # Met à jour la position des Handles
         self.update_handles_position()
 
     def update_handles_position(self):
@@ -60,15 +72,14 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
 
             self.update_handles_size(self.transform().m11())
 
-            self.save_item_geometry()
+            self.begin_move_tracking()
 
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement de la ligne."""
         super().mouseReleaseEvent(event)
-
-        self.save_history_geometry()
+        self.end_move_tracking()
 
     def itemChange(self, change, value):
         """Gestion des changements d'état de la ligne."""
@@ -152,3 +163,4 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         item.setTransform(transform)
 
         return item
+

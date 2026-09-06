@@ -5,6 +5,7 @@ from PyQt6.QtGui import QTransform, QColor, QFont
 from PyQt6.QtWidgets import QGraphicsItem
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 from libs.cadengine.graphic_view_element.GraphicItemManager.TextElement.TextResizable import TextResizable
 
 
@@ -47,6 +48,7 @@ class TextElement(ElementObject):
                                     transform: QTransform = QTransform(),
                                     visibility: bool = True,
                                     scale: float = 1.0,
+                                    handle_style: HandleStyle = DEFAULT_STYLE,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
@@ -62,6 +64,8 @@ class TextElement(ElementObject):
         item.setFlags(flags)
         item.setDefaultTextColor(text_color)
         item.setTransform(transform)
+
+        item.set_handle_style(handle_style)
 
         item.setData(key, value)
 

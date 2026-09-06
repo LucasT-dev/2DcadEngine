@@ -39,8 +39,14 @@ class CircleResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
         """Appelé quand un handle est déplacé (par Handle)."""
         # Convertit la position de la scène vers le repère local
-        local_pos = self.mapFromScene(event.scenePos())
+        scene_pos = event.scenePos()
+        local_pos = self.mapFromScene(scene_pos)
         rect = QRectF(self.rect())
+
+        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, exclude_item=self)
+
+        if snap_point_other_q_graphics_item:
+            local_pos = self.mapFromScene(snap_point_other_q_graphics_item)
 
         fixed = {
             "bottom_right": rect.topLeft(),
