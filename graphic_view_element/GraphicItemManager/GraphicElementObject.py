@@ -1,8 +1,9 @@
-from abc import abstractmethod
+from typing import List
 
-from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QGraphicsItem
+from abc import ABC, abstractmethod
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 from libs.cadengine.graphic_view_element.style.StyleElement import StyleElement
@@ -25,16 +26,25 @@ class ElementObject:
         """Méthode à implémenter pour chaque type d'élément avec ses paramètres spécifiques."""
         pass
 
-class PreviewObject:
 
-    def __init__(self, style: StyleElement):
+class PreviewObject(ABC):
+    """Comportement inchangé pour les formes à 2 points (ligne, rectangle, cercle)."""
 
+    is_multi_point: bool = False
+
+    def __init__(self, style):
         self._graphics_item = None
         self._style = style
 
-
     def get_style(self):
         return self._style
+
+    def get_item(self):
+        return self._graphics_item
+
+    def reset(self):
+        """Réinitialise l'aperçu. Commun à toutes les previews."""
+        self._graphics_item = None
 
     @abstractmethod
     def create_preview_item(self, start: QPointF, end: QPointF):
@@ -44,8 +54,29 @@ class PreviewObject:
     def update_item(self, start: QPointF, end: QPointF):
         pass
 
-    def get_item(self):
-        return self._graphics_item
+
+class MultiPointPreviewObject(PreviewObject):
+    """Base pour les formes à N points (polyligne, polygone...)."""
+
+    is_multi_point = True
+
+    def __init__(self, style):
+        super().__init__(style)
+        self._points: List[QPointF] = []
+
+    def add_point(self, point: QPointF):
+        print("add point")
+        """Valide un sommet supplémentaire (clic simple)."""
+        self._points.append(point)
+
+    def finish_points(self) -> List[QPointF]:
+        """Renvoie les points définitifs (fin de tracé)."""
+        return list(self._points)
+
+    def reset(self):
+        """Réinitialise l'aperçu ET les points accumulés."""
+        super().reset()          # remet self._graphics_item à None
+        self._points = []
 
 
 class GraphicElementObject:
@@ -70,7 +101,6 @@ class GraphicElementObject:
     @property
     def element(self):
         return self._element
-
 
 
     def get_preview(self) -> PreviewObject:
