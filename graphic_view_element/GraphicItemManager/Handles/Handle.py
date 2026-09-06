@@ -1,60 +1,83 @@
-from PyQt6.QtCore import Qt, QPointF
-from PyQt6.QtGui import QPen, QBrush, QColor
-from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
+from PyQt6.QtCore import Qt, QPointF, QRectF
+from PyQt6.QtGui import QPen, QBrush
+from PyQt6.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem, QWidget
 
-class Handle(QGraphicsEllipseItem):
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
-    BASE_SIZE = 8  # taille de base en pixels écran
 
-    def __init__(self, parent: QGraphicsItem, position: QPointF, role: str):
-        super().__init__(-4, -4, 8, 8)  # Taille fixe pour le handle
+class Handle(QGraphicsItem):
 
-        self.setParentItem(parent)
-        self.role = role  # Ex: "top-left", "bottom-rigt" etc.
-        self.setBrush(QBrush(QColor(0, 0, 0, 0)))
-        self.setPen(QPen(QColor(0, 204, 204, 255)))
-        self.setZValue(1000)  # Toujours au-dessus
-        self.setCursor(Qt.CursorShape.SizeAllCursor)
+    def __init__(self, parent: QGraphicsItem, position: QPointF, role: str,
+                 style: HandleStyle = None):
+        super().__init__(parent)
+
+        self.role = role
+        self.style: HandleStyle = style if style is not None else DEFAULT_STYLE
+        self._half = self.style.base_size / 2.0
+        self._pen_width = self.style.border_width
+
+        self.setZValue(self.style.z_value)
+        self.setCursor(self.style.cursor)
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, False)
-        self.setPos(position)  # Position initiale
-        self.setVisible(False)  # Invisible par défaut
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresParentOpacity, True)
+        self.setPos(position)
+        self.setVisible(False)
 
+    # Rendu
+    def boundingRect(self) -> QRectF:
+        margin = 1.0  # marge pour l'épaisseur du trait
+        return QRectF(-self._half - margin, -self._half - margin,
+                      (self._half + margin) * 2, (self._half + margin) * 2)
+
+    def paint(self, painter, option: QStyleOptionGraphicsItem, widget: QWidget = None):
+        painter.setPen(QPen(self.style.border_color, self._pen_width))
+        painter.setBrush(QBrush(self.style.fill_color))
+
+        rect = QRectF(-self._half, -self._half, self._half * 2, self._half * 2)
+
+        if self.style.shape == "rect":
+            painter.drawRect(rect)
+        else:
+            painter.drawEllipse(rect)
+
+    # Personnalisation à la volée
+    def set_style(self, style: HandleStyle):
+        self.style = style
+        self.setZValue(style.z_value)
+        self.setCursor(style.cursor)
+        self.update()
 
 
     def mousePressEvent(self, event):
         parent = self.parentItem()
-
         if parent and parent.isSelected():
             parent.handle_press(self.role, event)
-        super().mousePressEvent(event)
+        event.accept()
+        #super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        # Calcule la nouvelle position en coordonnées locales de l'item parent
         parent = self.parentItem()
         if parent and parent.isSelected():
             parent.handle_moved(self.role, event)
-        super().mouseMoveEvent(event)
+        event.accept()
+        #super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         parent = self.parentItem()
         if parent and parent.isSelected():
             parent.handle_released(self.role, event)
-        super().mouseReleaseEvent(event)
+        event.accept()
+        #super().mouseReleaseEvent(event)
 
-
+    # Zoom
     def update_size(self, zoom_level: float):
-        """Redimensionne le handle selon le zoom de la vue."""
         if zoom_level <= 0:
             return
 
-        MIN_HALF = 3.0  # taille minimum en pixels scène
-
-        half = max((self.BASE_SIZE / zoom_level) / 1.5 , MIN_HALF)
-        self.setRect(-half, -half, half * 2, half * 2)
-
-        pen = self.pen()
-        pen.setWidthF(max(3 / zoom_level, 1.0))  # épaisseur minimum à 1.0
-        self.setPen(pen)
+        self.prepareGeometryChange()
+        self._half = max((self.style.base_size / zoom_level) / 1.5, self.style.min_size)
+        self._pen_width = max(self.style.border_width / zoom_level, 1.0)
+        self.update()
