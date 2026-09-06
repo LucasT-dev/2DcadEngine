@@ -621,9 +621,15 @@ class GraphicView(QGraphicsView):
 
     def delete_selected_items(self):
         # Pour tous les items sélectionnés
-        for item in list(self.g_get_items_selected()):
-            cmd = RemoveItemCommand(self.scene, item)
+        selected = self.scene().selectedItems()
+
+        # Exclut les handles (enfants d'un item, pas des items à supprimer directement)
+        selected = [item for item in selected if not isinstance(item, Handle)]
+
+        if selected:
+            cmd = RemoveItemsCommand(scene=self.scene, items=selected)
             self.scene().undo_stack.push(cmd)
+        return
 
     def set_undo_limit(self, limit: int):
 

@@ -78,13 +78,13 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
             self.select_handle(True)
             self.update_handles_position()
 
-            self.save_item_geometry()
+            self.begin_move_tracking()
 
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement de l'ellipse."""
-        self.save_history_geometry()
+        self.end_move_tracking()
 
         super().mouseReleaseEvent(event)
 

@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QUndoCommand, QColor
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPixmapItem, QGraphicsTextItem, \
-    QGraphicsLineItem, QGraphicsItem
+    QGraphicsLineItem, QGraphicsItem, QGraphicsPathItem
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
 
@@ -18,42 +18,56 @@ class AddItemCommand(QUndoCommand):
     def redo(self):
         self.scene.addItem(self.item)
 
+class RemoveItemsCommand(QUndoCommand):
+    """Suppression groupée de plusieurs items en une seule opération d'undo/redo."""
 
-class RemoveItemCommand(QUndoCommand):
-    def __init__(self, scene, item):
-        super().__init__(f"delete item {item.__class__.__name__}" )
+    def __init__(self, scene, items: list, description=None):
+        item_count = len(items)
+        if description is None:
+            description = f"delete {item_count} item(s)" if item_count > 1 else f"delete item {items[0].__class__.__name__}"
+
+        super().__init__(description)
         self.scene = scene
-        self.item = item
+        self.items = list(items)
         self.was_in_scene = True
 
-        # 🔹 On stocke tous les enfants pour éviter le crash
-
-        self.children = item.childItems() if item else []
-
-        # 🔹 Forcer leur détachement pour éviter destruction auto par Qt
-        for child in self.children:
-            child.setParentItem(None)
+        self.children_by_item = {}
+        for item in self.items:
+            children = item.childItems() if item else []
+            self.children_by_item[item] = children
+            for child in children:
+                child.setParentItem(None)
 
     def undo(self):
+        if self.was_in_scene:
+            return  # déjà dans la scène, rien à faire (sécurité anti double-appel)
 
-        if not self.was_in_scene:
-            # 🔄 Re-parent les enfants
-            for child in self.children:
+        for item in self.items:
+            children = self.children_by_item.get(item, [])
+
+            self.scene().addItem(item)
+            for child in children:
                 self.scene().addItem(child)
-                child.setParentItem(self.item)
+                child.setParentItem(item)
 
-            self.scene().addItem(self.item)
-            self.was_in_scene = True
+        self.was_in_scene = True
 
     def redo(self):
+        if not self.was_in_scene:
+            return  # déjà retiré, rien à faire
 
-        if self.was_in_scene:
+        for item in self.items:
+            children = self.children_by_item.get(item, [])
 
-            for child in self.children:
+            for child in children:
                 self.scene().removeItem(child)
 
-            self.scene().removeItem(self.item)
-            self.was_in_scene = False
+            self.scene().removeItem(item)
+
+        self.was_in_scene = False
+
+    def details(self):
+        return f"{self.text()} | {len(self.items)} item(s)"
 
 
 class ModifyItemCommand(QUndoCommand):
@@ -78,12 +92,22 @@ class ModifyItemCommand(QUndoCommand):
         - Rect/Ellipse : (pos_x, pos_y, rect_x, rect_y, rect_w, rect_h)
         - Pixmap : (pos_x, pos_y, width, height)
         - Text : (pos_x, pos_y, width, height)
+        - PathLine (polyligne/courbe) : (pos_x, pos_y, points, controls) — voir set_item_geometry
         """
 
         if isinstance(self.item, QGraphicsLineItem):
             x, y, x1, y1, x2, y2 = geometry
             self.item.setPos(x, y)
             self.item.setLine(x1, y1, x2, y2)
+
+        elif isinstance(self.item, QGraphicsPathItem):
+            # points (+ points de contrôle Bézier) et non un tuple fixe.
+            if hasattr(self.item, "set_item_geometry"):
+                self.item.set_item_geometry(geometry)
+            else:
+                raise NotImplementedError(
+                    f"{type(self.item).__name__} est un QGraphicsPathItem mais n'implémente pas set_item_geometry"
+                )
 
         elif isinstance(self.item, (QGraphicsRectItem, QGraphicsEllipseItem)):
             pos_x, pos_y, rx, ry, rw, rh = geometry
@@ -105,7 +129,7 @@ class ModifyItemCommand(QUndoCommand):
 
     def details(self):
         """Retourne une chaîne décrivant l’état avant/après pour l’historique"""
-        return f"{self.text()} | Avant: {self.old_geometry} -> Après: {self.new_geometry}"
+        return f"{self.text()} | Before : {self.old_geometry} -> After : {self.new_geometry}"
 
 
 def capture_item_properties(item: QGraphicsItem):
@@ -127,15 +151,40 @@ def capture_item_properties(item: QGraphicsItem):
     # Z-value
     props["z_value"] = item.zValue()
 
-    # Texte (si c'est un QGraphicsTextItem ou équivalent)
+    # Texte
     if hasattr(item, "toPlainText"):
         props["text"] = item.toPlainText()
+    if hasattr(item, "defaultTextColor"):
         props["text_color"] = item.defaultTextColor()
+    if hasattr(item, "font"):
         props["font"] = item.font()
+    if hasattr(item, "textWidth"):
         props["text_width"] = item.textWidth()
 
     return props
 
+class MoveItemsCommand(QUndoCommand):
+    def __init__(self, positions: dict, description="move items"):
+        """
+        positions : {item: (old_pos: QPointF, new_pos: QPointF)}
+        """
+        super().__init__(description)
+        self.positions = positions
+
+    def undo(self):
+        for item, (old_pos, new_pos) in self.positions.items():
+            item.setPos(old_pos)
+            if hasattr(item, "update_handles_position"):
+                item.update_handles_position()
+
+    def redo(self):
+        for item, (old_pos, new_pos) in self.positions.items():
+            item.setPos(new_pos)
+            if hasattr(item, "update_handles_position"):
+                item.update_handles_position()
+
+    def details(self):
+        return f"{self.text()} | {len(self.positions)} item(s) déplacé(s)"
 
 class ModifyItemPropertiesCommand(QUndoCommand):
 
