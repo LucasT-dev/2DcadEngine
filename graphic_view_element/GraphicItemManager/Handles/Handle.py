@@ -21,7 +21,7 @@ class Handle(QGraphicsItem):
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
-        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, False)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresParentOpacity, True)
         self.setPos(position)
         self.setVisible(False)
