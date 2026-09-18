@@ -1,4 +1,5 @@
 import importlib
+import typing
 
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF
 from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap, QPageSize, \
@@ -6,12 +7,14 @@ from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, 
 from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
     QGraphicsTextItem
+from PyQt6.uic.properties import QtGui
 
 from libs.cadengine.draw.CameraManager import Camera
 from libs.cadengine.draw.AnnotationManager import AnnotationManager
 from libs.cadengine.draw.GridManager import Grid
 from libs.cadengine.draw.HistoryManager import ModifyItemPropertiesCommand, GroupItemsCommand, \
     UngroupItemsCommand, AddItemCommand, RemoveItemsCommand
+from libs.cadengine.draw.ExportSceneManager import ExportSceneManager
 from libs.cadengine.draw.MouseTracker import MouseTracker
 from libs.cadengine.draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
 from libs.cadengine.exception.GraphicElementExceptions import ElementNotRegisteredError, ElementCreationError, \
@@ -19,6 +22,7 @@ from libs.cadengine.exception.GraphicElementExceptions import ElementNotRegister
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject, ElementObject, \
     PreviewObject
+from libs.cadengine.graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 from libs.cadengine.graphic_view_element.style.StyleElement import StyleElement
@@ -109,9 +113,11 @@ class GraphicView(QGraphicsView):
     tool_changed = pyqtSignal(str)
     selection_changed = pyqtSignal(list)
     zoom_changed = pyqtSignal(float)
+    key_press_event = pyqtSignal(int)
 
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
+
 
         self.first_point = None
         self._drawing = True
@@ -130,6 +136,9 @@ class GraphicView(QGraphicsView):
         # Element manager - Gestion des elements, preview, serialisation, resize
         self.element_manager = GraphicElementManager()
 
+        # Gestion des import/export de la scene
+        self.export_manager = ExportSceneManager(self)
+
         self.scene().selectionChanged.connect(self.emit_selection_changed)
 
 
@@ -139,6 +148,10 @@ class GraphicView(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+
+        # variable pour les imports dynamiques
+        self._pending_placement_item: QGraphicsItem | None = None
+        self._pending_placement_offset: QPointF = QPointF(0, 0)
 
 
     def g_set_render_hit(self, render: QPainter.RenderHint):
@@ -221,7 +234,7 @@ class GraphicView(QGraphicsView):
 
 
     def g_set_tool(self, tool: str):
-
+        print("g_set_too : " + tool)
         self._cancel_drawing()
         self.style_element.set_tool(tool)
 
@@ -464,7 +477,7 @@ class GraphicView(QGraphicsView):
         return self.g_serialize_items(self.scene().items())
 
     def g_serialize_items(self, item_list) -> list[dict]:
-        """Parcourt tous les items de la scène et sérialise ceux appartenant à un GraphicElementObject."""
+        """Parcourt tous les items et sérialise ceux appartenant à un GraphicElementObject."""
         if not self.scene():
             return []
 
@@ -532,6 +545,10 @@ class GraphicView(QGraphicsView):
         module = importlib.import_module(module_path)
         cls = getattr(module, class_name)
         return cls
+
+    def get_export_manager(self):
+        return self.export_manager
+
 
     def export_scene_to_pdf(self, scene: QGraphicsScene, filename: str, render_rect: QRectF,
                             format=QPageSize.PageSizeId.A4, orientation=QPageLayout.Orientation.Portrait):
@@ -762,6 +779,15 @@ class GraphicView(QGraphicsView):
 
         self._update_rulers()
 
+        # Importation d'un item avec placement dynamique
+        if self._pending_placement_item is not None:
+            if event.button() == Qt.MouseButton.LeftButton:
+                self._confirm_item_placement()
+            elif event.button() == Qt.MouseButton.RightButton:
+                self._cancel_item_placement()
+            return
+
+        # Dessin des items
         if self._drawing:
             if self.element_manager.has_preview(self.g_get_tool()):
                 preview = self.element_manager.get_element(self.g_get_tool()).get_preview()
@@ -830,6 +856,11 @@ class GraphicView(QGraphicsView):
     def mouseMoveEvent(self, event):
         self.mouse_tracker.process_mouse_move(event)
 
+        if self._pending_placement_item is not None:
+            scene_pos = self.mapToScene(event.pos())
+            self._pending_placement_item.setPos(scene_pos + self._pending_placement_offset)
+            return  # n'interfère pas avec le reste (preview de dessin, etc.)
+
         if self.element_manager.has_preview(self.g_get_tool()) and self.first_point is not None:
             self.element_manager.get_element(self.g_get_tool()).get_preview().update_item(self.first_point, self.mapToScene(event.pos()))
 
@@ -854,8 +885,11 @@ class GraphicView(QGraphicsView):
         self._update_rulers()
 
 
-    # @deprecated
     def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key.Key_Escape:
+            self._cancel_drawing()
+            self._cancel_item_placement()  # <-- ajout
 
         if isinstance(self.scene().focusItem(), QGraphicsTextItem):
             super().keyPressEvent(event)
@@ -864,6 +898,7 @@ class GraphicView(QGraphicsView):
         key = event.key()
 
         for item in self.element_manager.get_all_elements():
+
             if item.shortcut == key:
                 self.g_set_tool(item.name)
 
@@ -873,6 +908,8 @@ class GraphicView(QGraphicsView):
                     self.g_set_cursor(item.cursor)
 
                 event.accept()
+
+        self.key_press_event.emit(event.key())
 
         super().keyPressEvent(event)
 
@@ -901,6 +938,110 @@ class GraphicView(QGraphicsView):
             finally:
                 painter.end()
 
+    # -------------------- Start import item ---------
+
+    def g_build_temporary_group(self, items: list[QGraphicsItem]) -> QGraphicsItem:
+        """
+        Construit un GroupElement contenant tous les items donnés, positionné
+        à leur centroïde. Le groupe n'est PAS ajouté à la scène ici — c'est
+        au code appelant de le faire (placement, ou ajout direct).
+        """
+        if not items:
+            raise ValueError("Impossible de créer un groupe vide")
+
+        if len(items) == 1:
+            return items[0]
+
+        center = QPointF()
+        for item in items:
+            center += item.pos()
+        center /= len(items)
+
+        group = GroupElement.create_custom_graphics_item(
+            first_point=QPointF(0, 0), second_point=QPointF(0, 0),
+            border_color=QColor(0, 0, 0, 255), border_style=Qt.PenStyle.SolidLine,
+            border_width=1, fill_color=QColor(0, 0, 0, 0)
+        )
+        group.setPos(center)
+
+        print(group)
+
+        for item in items:
+            print(item)
+
+            group.add_to_group(item)
+
+        return group
+
+    def g_start_item_placement(self, item: QGraphicsItem, anchor: str = "center"):
+        """
+        Attache un item déjà créé (mais pas encore dans l'historique) au
+        curseur de la souris. L'item suit la souris jusqu'au clic gauche,
+        qui le fixe définitivement à la scène (avec historique).
+        Un clic droit ou Échap annule le placement.
+
+        'anchor' : "center" ou "top_left" — détermine quel point de l'item
+        reste sous le curseur pendant le déplacement.
+        """
+        if self._pending_placement_item is not None:
+            # Annule un placement précédent resté en suspens, par sécurité
+            self._cancel_item_placement()
+
+        self._pending_placement_item = item
+
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+        item.setOpacity(0.6)  # feedback visuel : item "en cours de placement"
+
+        bounding = item.boundingRect()
+        if anchor == "center":
+            self._pending_placement_offset = QPointF(-bounding.width() / 2, -bounding.height() / 2)
+        else:
+            self._pending_placement_offset = QPointF(0, 0)
+
+        self.scene().addItem(item)
+
+        # Positionne immédiatement sous le curseur actuel
+        cursor_scene_pos = self.mapToScene(self.mapFromGlobal(self.cursor().pos()))
+        item.setPos(cursor_scene_pos + self._pending_placement_offset)
+
+        self.setMouseTracking(True)  # nécessaire pour recevoir mouseMoveEvent sans clic maintenu
+
+    def _confirm_item_placement(self):
+        item = self._pending_placement_item
+        if item is None:
+            return
+
+        item.setOpacity(1.0)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+
+        self.scene().removeItem(item)
+
+        self._pending_placement_item = None
+        self.setMouseTracking(False)
+
+        self.g_add_QGraphicitem(item, history=True)
+
+        # Sélectionne l'item/groupe fraîchement placé, pour feedback immédiat
+        item.setSelected(True)
+
+    def _cancel_item_placement(self):
+        item = self._pending_placement_item
+        if item is None:
+            return
+
+        # Si c'est un groupe temporaire, retire proprement ses enfants avant
+        # de supprimer le groupe lui-même.
+        if hasattr(item, "childItems"):
+            for child in list(item.childItems()):
+                if isinstance(child, Handle):
+                    continue
+                self.scene().removeItem(child)
+
+        self.scene().removeItem(item)
+        self._pending_placement_item = None
+        self.setMouseTracking(False)
 
     # -------------------- Start Error manager ---------
 
@@ -911,3 +1052,5 @@ class GraphicView(QGraphicsView):
         """
         import logging
         logging.getLogger(__name__).error(str(error))
+
+
