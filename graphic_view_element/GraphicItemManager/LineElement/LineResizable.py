@@ -1,3 +1,5 @@
+from typing import List
+
 from PyQt6.QtCore import QPointF, QLineF
 from PyQt6.QtGui import QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsSceneMouseEvent, QGraphicsItem
@@ -44,6 +46,21 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
 
         self.setLine(line)
         self.update_handles_position()
+
+    def get_point_of_interest(self) -> list[QPointF]:
+        print("get_point_of_interest")
+        line = self.line()
+
+        print("0")
+
+        p1 = self.mapToScene(line.p1())
+        print("1")
+        p2 = self.mapToScene(line.p2())
+        print("2")
+        mid = QPointF((p1.x() + p2.x()) / 2, (p1.y() + p2.y()) / 2)
+        print("3")
+        #print("result : " + [p1, p2, mid])
+        return [p1, p2, mid]
 
     def update_handles_position(self):
         self.handles["start"].setPos(self.line().p1())

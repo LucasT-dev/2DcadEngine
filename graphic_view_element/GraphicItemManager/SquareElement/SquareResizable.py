@@ -69,6 +69,22 @@ class SquareResizable(ResizableGraphicsItem, QGraphicsRectItem):
         self.setRect(rect)
         QTimer.singleShot(0, self.update_handles_position)
 
+    def get_point_of_interest(self) -> list[QPointF]:
+        rect = self.boundingRect()
+
+        tl = self.mapToScene(rect.topLeft())
+        tr = self.mapToScene(rect.topRight())
+        br = self.mapToScene(rect.bottomRight())
+        bl = self.mapToScene(rect.bottomLeft())
+        c = self.mapToScene(rect.center())
+
+        tm = (QPointF((tl.x() + tr.x()) / 2, (tl.y() + tr.y()) / 2))
+        bm = (QPointF((br.x() + bl.x()) / 2, (br.y() + bl.y()) / 2))
+        lm = (QPointF((tl.x() + bl.x()) / 2, (tl.y() + bl.y()) / 2))
+        rm = (QPointF((tr.x() + br.x()) / 2, (tr.y() + br.y()) / 2))
+
+        return [tl, tr, br, bl, c, tm, bm, lm, rm]
+
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)

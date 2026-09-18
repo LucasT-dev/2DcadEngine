@@ -142,6 +142,16 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self._rebuild_path()
         self.update_handles_position()
 
+    def get_point_of_interest(self) -> list[QPointF]:
+        anchors = self.get_anchor_points_scene()
+        points = list(anchors)
+
+        return points
+
+    def get_anchor_points_scene(self) -> list[QPointF]:
+        """Points d'ancrage de la courbe (hors points de contrôle Bézier), en coordonnées scène."""
+        return [self.mapToScene(p) for p in self._points]
+
     def update_handles_position(self):
         if self._updating_handles:
             return
@@ -205,10 +215,6 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         if self._old_geometry != new_geometry:
             cmd = ModifyItemCommand(self, self._old_geometry, new_geometry, "resize/move pathline")
             self.scene().undo_stack.push(cmd)
-
-    def get_anchor_points_scene(self) -> list[QPointF]:
-        """Points d'ancrage réels (hors contrôles Bézier), en coordonnées scène — pour le snapping."""
-        return [self.mapToScene(p) for p in self._points]
 
     @property
     def get_item_geometry(self):

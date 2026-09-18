@@ -77,6 +77,16 @@ class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self._rebuild_path()
         self.update_handles_position()
 
+    def get_point_of_interest(self) -> list[QPointF]:
+        anchors = self.get_anchor_points_scene()
+        points = list(anchors)
+
+        for i in range(len(anchors) - 1):
+            a, b = anchors[i], anchors[i + 1]
+            points.append(QPointF((a.x() + b.x()) / 2, (a.y() + b.y()) / 2))
+
+        return points
+
     def get_anchor_points_scene(self) -> list[QPointF]:
         """Points d'ancrage de la courbe (hors points de contrôle Bézier), en coordonnées scène."""
         return [self.mapToScene(p) for p in self._points]

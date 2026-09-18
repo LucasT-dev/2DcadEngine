@@ -2,7 +2,7 @@ import math
 from abc import abstractmethod
 
 from PyQt6.QtCore import QPointF, QLineF
-from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsPathItem
+from PyQt6.QtWidgets import QGraphicsPathItem
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
 from libs.utils.arraylist import ArrayList
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
@@ -117,6 +117,14 @@ class ResizableGraphicsItem:
     def from_dict(cls, data: dict): # -> GraphicElementObject:
         pass
 
+    @abstractmethod
+    def get_point_of_interest(self) -> list[QPointF]:
+        """
+        Implémentation par défaut : aucun point d'intérêt. Les sous-classes
+        doivent la surcharger pour participer au snapping.
+        """
+        return []
+
     def snap_is_enable(self) -> bool :
         return self.snap_point_enable
 
@@ -128,6 +136,8 @@ class ResizableGraphicsItem:
 
     def get_snap_radius(self) -> int:
         return self.snap_radius
+
+
 
     def _find_snap_point(self, scene, scene_pos: QPointF, exclude_item=None, exclude_point_index: int = None) -> QPointF | None:
         """
@@ -182,84 +192,12 @@ class ResizableGraphicsItem:
             if isinstance(item, Handle):
                 continue
 
-            if isinstance(item, QGraphicsLineItem):
-                line = item.line()
+            if not hasattr(item, "get_point_of_interest"):
+                continue
 
-                p1 = item.mapToScene(line.p1())
-                p2 = item.mapToScene(line.p2())
+            for point in item.get_point_of_interest():
+                candidates.add(point)
 
-                candidates.add(p1)
-                candidates.add(p2)
-                candidates.add(QPointF((p1.x() + p2.x()) / 2, (p1.y() + p2.y()) / 2))
-
-                add_segment_projection(p1, p2)
-
-            if isinstance(item, QGraphicsRectItem):
-                rect = item.rect()
-
-                tl = item.mapToScene(rect.topLeft())
-                tr = item.mapToScene(rect.topRight())
-                br = item.mapToScene(rect.bottomRight())
-                bl = item.mapToScene(rect.bottomLeft())
-                c = item.mapToScene(rect.center())
-
-                candidates.add(tl)
-                candidates.add(tr)
-                candidates.add(br)
-                candidates.add(bl)
-                candidates.add(c)
-
-                candidates.add(QPointF((tl.x() + tr.x()) / 2, (tl.y() + tr.y()) / 2))
-                candidates.add(QPointF((br.x() + bl.x()) / 2, (br.y() + bl.y()) / 2))
-                candidates.add(QPointF((tl.x() + bl.x()) / 2, (tl.y() + bl.y()) / 2))
-                candidates.add(QPointF((tr.x() + br.x()) / 2, (tr.y() + br.y()) / 2))
-
-                # Accroche sur n'importe quel point des 4 côtés
-                add_segment_projection(tl, tr)
-                add_segment_projection(tr, br)
-                add_segment_projection(br, bl)
-                add_segment_projection(bl, tl)
-
-            if isinstance(item, QGraphicsEllipseItem):
-                ellipse = item.rect()
-                cx = ellipse.center().x()
-                cy = ellipse.center().y()
-                rx = ellipse.width() / 2
-                ry = ellipse.height() / 2
-
-                candidates.add(item.mapToScene(ellipse.center()))
-                candidates.add(item.mapToScene(QPointF(cx, cy - ry)))
-                candidates.add(item.mapToScene(QPointF(cx, cy + ry)))
-                candidates.add(item.mapToScene(QPointF(cx - rx, cy)))
-                candidates.add(item.mapToScene(QPointF(cx + rx, cy)))
-                # Pas de projection sur segment ici : le contour est une courbe,
-                # pas une suite de segments droits. Voir remarque plus bas si besoin.
-
-            if isinstance(item, QGraphicsPathItem):
-                if hasattr(item, "get_anchor_points_scene"):
-                    anchor_points = item.get_anchor_points_scene()
-                    for point in anchor_points:
-                        candidates.add(point)
-
-                    for i in range(len(anchor_points) - 1):
-                        a = anchor_points[i]
-                        b = anchor_points[i + 1]
-                        candidates.add(QPointF((a.x() + b.x()) / 2, (a.y() + b.y()) / 2))
-                        add_segment_projection(a, b)
-                else:
-                    path = item.path()
-                    points_scene = []
-                    for i in range(path.elementCount()):
-                        element = path.elementAt(i)
-                        point_scene = item.mapToScene(QPointF(element.x, element.y))
-                        candidates.add(point_scene)
-                        points_scene.append(point_scene)
-
-                    for i in range(1, len(points_scene)):
-                        a = points_scene[i - 1]
-                        b = points_scene[i]
-                        candidates.add(QPointF((a.x() + b.x()) / 2, (a.y() + b.y()) / 2))
-                        add_segment_projection(a, b)
 
         for candidate in candidates:
             dist = (scene_pos - candidate).manhattanLength()

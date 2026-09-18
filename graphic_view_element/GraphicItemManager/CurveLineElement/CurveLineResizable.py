@@ -61,6 +61,12 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
     def _rebuild_path(self):
         self.setPath(build_smooth_path(self._points))
 
+    def get_point_of_interest(self) -> list[QPointF]:
+        anchors = self.get_anchor_points_scene()
+        points = list(anchors)
+
+        return points
+
     def get_anchor_points_scene(self) -> list[QPointF]:
         """Points d'ancrage de la courbe (hors points de contrôle Bézier), en coordonnées scène."""
         return [self.mapToScene(p) for p in self._points]
@@ -163,7 +169,7 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         return pos.x(), pos.y(), points
 
     def set_item_geometry(self, geometry):
-        """Restaure une géométrie donnée (utile pour undo/redo)."""
+        """Restaure une géométrie donnée."""
         pos_x, pos_y, points = geometry
         self.setPos(pos_x, pos_y)
         self._points = [QPointF(x, y) for x, y in points]
