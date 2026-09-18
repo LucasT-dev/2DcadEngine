@@ -1,5 +1,6 @@
 from PyQt6.QtCore import QPointF, Qt
-from PyQt6.QtGui import QUndoCommand, QColor
+from PyQt6.QtGui import QUndoCommand, QColor, QTransform
+from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPixmapItem, QGraphicsTextItem, \
     QGraphicsLineItem, QGraphicsItem, QGraphicsPathItem
 
@@ -126,6 +127,17 @@ class ModifyItemCommand(QUndoCommand):
             pos_x, pos_y, width, height = geometry
             self.item.setPos(pos_x, pos_y)
             self.item.setTextWidth(max(width, 1.0))
+
+
+        elif isinstance(self.item, QGraphicsSvgItem):
+            print(geometry)
+            pos_x, pos_y, m11, m22, dx, dy = geometry
+            self.item.setPos(pos_x, pos_y)
+
+            transform = QTransform(m11, 0, 0, m22, dx, dy)
+            self.item.setTransform(transform)
+
+
 
     def details(self):
         """Retourne une chaîne décrivant l’état avant/après pour l’historique"""
