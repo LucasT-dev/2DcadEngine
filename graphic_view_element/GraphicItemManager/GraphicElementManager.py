@@ -11,13 +11,13 @@ class GraphicElementManager:
     def __init__(self):
         self.item_register = {}
 
-    def register_element(self, name: str, element: GraphicElementObject, overwrite: bool = False):
+    def register_element(self, name: str, element: GraphicElementObject):
         """
         Enregistre un élément sous un nom.
         Lève ElementAlreadyRegisteredError si le nom existe déjà,
         sauf si overwrite=True est explicitement passé.
         """
-        if self.contains_element(name) and not overwrite:
+        if self.contains_element(name):
             raise ElementAlreadyRegisteredError(name)
 
         self.item_register[name] = element
@@ -70,4 +70,3 @@ class GraphicElementManager:
         if not self.contains_element(name):
             return False
         return self.get_element(name).get_preview() is not None
-
