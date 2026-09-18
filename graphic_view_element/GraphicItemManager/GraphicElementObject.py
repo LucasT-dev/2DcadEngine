@@ -86,7 +86,7 @@ class GraphicElementObject:
         self.name = name # Nom de l'item
 
         self._cursor: Qt.CursorShape | QCursor = Qt.CursorShape.CrossCursor
-        self._shortcut: Qt.Key = Qt.Key.Key_Escape
+        self._shortcut: Qt.Key | None = None
 
         self._style = style
 
