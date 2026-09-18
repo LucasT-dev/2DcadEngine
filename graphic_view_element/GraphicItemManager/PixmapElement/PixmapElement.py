@@ -1,5 +1,7 @@
 import os
 import uuid
+from pathlib import Path
+
 from PyQt6.QtGui import QPixmap, QTransform
 from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtWidgets import QGraphicsItem, QLabel
@@ -13,7 +15,9 @@ class PixmapElement(ElementObject):
 
     def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
 
-        image_path = "C:\Bureau\\free-nature-images.jpg"
+        current_dir = Path(__file__).parent
+        image_path = str(current_dir.parents[2] / "image" / "default.png")
+
         if not os.path.exists(image_path):
             print("Image par défaut introuvable, utilisez un chemin valide.")
             return

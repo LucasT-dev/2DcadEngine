@@ -1,17 +1,20 @@
+from pathlib import Path
+
 from PyQt6.QtGui import QPixmap, QTransform
 from PyQt6.QtWidgets import QGraphicsPixmapItem
 from PyQt6.QtCore import QRectF, Qt
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
 
-pixmap_path = "C:\Bureau\\free-nature-images.jpg"
+current_dir = Path(__file__).parent
+image_path = str(current_dir.parents[2] / "image" / "default.png")
 
 class PixmapPreview(PreviewObject):
 
     def create_preview_item(self, start, end):
         rect = QRectF(start, end).normalized()
 
-        pixmap = QPixmap(pixmap_path)
+        pixmap = QPixmap(image_path)
         pixmap = pixmap.transformed(QTransform().scale(1, -1))
 
         scaled_pixmap = pixmap.scaled(
@@ -27,7 +30,7 @@ class PixmapPreview(PreviewObject):
 
         rect = QRectF(start, end).normalized()
 
-        pixmap = QPixmap(pixmap_path)
+        pixmap = QPixmap(image_path)
         pixmap = pixmap.transformed(QTransform().scale(1, -1))
 
         scaled_pixmap = pixmap.scaled(
