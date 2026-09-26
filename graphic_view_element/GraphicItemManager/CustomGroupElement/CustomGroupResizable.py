@@ -7,7 +7,7 @@ from libs.cadengine.adapter import AdpaterItem
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 
 
-class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
+class CustomGroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
 
     def __init__(self, rect: QRectF, items=None):
 
@@ -206,30 +206,19 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
                 item.setTextWidth(max(new_rect.width(), 1.0))
 
     def _calcul_point_of_interest(self):
-        rect = self.rect()
-
-        tl = rect.topLeft()
-        tr = rect.topRight()
-        br = rect.bottomRight()
-        bl = rect.bottomLeft()
-        c = rect.center()
-
-        tm = (QPointF((tl.x() + tr.x()) / 2, (tl.y() + tr.y()) / 2))
-        bm = (QPointF((br.x() + bl.x()) / 2, (br.y() + bl.y()) / 2))
-        lm = (QPointF((tl.x() + bl.x()) / 2, (tl.y() + bl.y()) / 2))
-        rm = (QPointF((tr.x() + br.x()) / 2, (tr.y() + br.y()) / 2))
-
-        return [tl, tr, br, bl, c, tm, bm, lm, rm]
+        """L'utilisateur est libre de mettre les points d'interet"""
+        return []
 
     def _add_point_of_interest(self):
-        for p in self._calcul_point_of_interest() :
+
+        for p in self._calcul_point_of_interest():
             self.add_point_of_interest(p)
 
         return self._custom_points_of_interest
 
     def _update_point_of_interest(self):
 
-        for index, p in enumerate(self._calcul_point_of_interest()) :
+        for index, p in enumerate(self._calcul_point_of_interest()):
             self.replace_point_of_interest(p, index)
 
     def get_point_of_interest(self) -> list[QPointF]:
@@ -355,6 +344,7 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
 
     def to_dict(self) -> dict:
         r: QRectF = self.rect()
+
         # Sérialisation des enfants : forçage via to_dict() si dispo
         items_data = []
         for child in self.childItems():
@@ -399,29 +389,31 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         pen = AdpaterItem.dict_to_pen(data["pen"])
         brush = AdpaterItem.dict_to_brush(data["brush"])
 
-        # RECONSTRUCTION DES ENFANTS
+        # --- RECONSTRUCTION DES ENFANTS ---
         children_data = data.get("items", [])
         reconstructed_children = []
 
         for child_dict in children_data:
-            # Récupération du chemin de classe
+            # Récupération du chemin de classe (déjà présent dans "data")
             class_path = child_dict.get("data", {}).get("class", None)
 
             if class_path is None:
                 print("[WARN] Enfant sans 'class' :", child_dict)
                 continue
 
+            # Résolution dynamique
             child_class = AdpaterItem.resolve_class_from_path(class_path)
 
             if child_class is None:
                 print("[ERROR] Impossible de résoudre :", class_path)
                 continue
 
+            # Vérifier que la classe a bien from_dict
             if not hasattr(child_class, "from_dict"):
                 print("[ERROR] Classe sans from_dict :", child_class)
                 continue
 
-            # recupere les data des enfants du group
+            # Appeler from_dict
             child_item = child_class.from_dict(child_dict)
             reconstructed_children.append(child_item)
 
@@ -440,7 +432,7 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
             scale=item_data["scale"],
             flags=flags,
             
-            items=reconstructed_children,  # <- enfants inclus ici
+            items=reconstructed_children,  # enfants inclus ici
         )
 
         group.setTransform(transform)

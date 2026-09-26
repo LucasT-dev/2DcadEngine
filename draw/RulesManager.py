@@ -225,11 +225,3 @@ class CornerRuler(QWidget):
             painter.fillRect(self.rect(), self._background_color)
         finally:
             painter.end()
-
-
-
-
-
-
-
-

@@ -11,7 +11,7 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle 
 
 class GroupElement(ElementObject):
 
-    def create_graphics_item(self, first_point: QPointF, second_point: QPointF, items:[]=None):
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF, items:[]=None) -> GroupResizable:
         rect = QRectF(first_point, second_point).normalized()
 
         pen = QPen(QColor(self.get_style().get_border_color()))
@@ -49,13 +49,17 @@ class GroupElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
-                                    items=None):
+                                    items=None) -> GroupResizable:
+
+        print("create_custom_graphics_item")
 
         if items is None:
             items = []
+
         rect = QRectF(first_point, second_point).normalized()
 
         pen = QPen(border_color)
@@ -65,6 +69,7 @@ class GroupElement(ElementObject):
         brush = QBrush(fill_color)
 
         item = GroupResizable(rect, items)
+
         item.setPen(pen)
         item.setBrush(brush)
         item.setZValue(z_value)
@@ -73,6 +78,7 @@ class GroupElement(ElementObject):
         item.setScale(scale)
 
         item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable)
 
         item.setFlags(flags)
 

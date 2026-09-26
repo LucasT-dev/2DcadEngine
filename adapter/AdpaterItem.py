@@ -6,8 +6,12 @@ from PyQt6.QtCore import Qt, QPointF, QIODevice, QBuffer
 from PyQt6.QtGui import QPen, QBrush, QColor, QTransform, QFont, QPixmap
 from PyQt6.QtWidgets import QGraphicsItem
 
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 
-def get_data(item: QGraphicsItem):
+
+def get_data(item):
+    print(item.get_points_of_interest_local())
+
     return {
         "class": f"{type(item).__module__}.{type(item).__name__}",
         "z_value": item.zValue(),
@@ -19,7 +23,13 @@ def get_data(item: QGraphicsItem):
             str(k): safe_serialize(item.data(k))
             for k in range(0, 100)
             if item.data(k) is not None
-        }
+        },
+        "is_resizable": item.get_item_is_resizable(),
+        "snap_point_enable": item.get_snap_is_enable(),
+        "points_of_interest" : [
+            {"p" : point_to_dict(p)} for p in item.get_points_of_interest_local()
+        ],
+
     }
 
 
@@ -156,6 +166,7 @@ def font_to_dict(font: QFont) -> dict:
         "bold": font.bold(),
         "italic": font.italic(),
         "underline": font.underline(),
+        "kerning": font.kerning(),
     }
 
 
@@ -164,6 +175,7 @@ def font_from_dict(data: dict) -> QFont:
     f.setBold(data["bold"])
     f.setItalic(data["italic"])
     f.setUnderline(data["underline"])
+    f.setKerning(data["kerning"])
     return f
 
 

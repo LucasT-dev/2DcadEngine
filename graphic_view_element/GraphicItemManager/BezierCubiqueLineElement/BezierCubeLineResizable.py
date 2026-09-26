@@ -13,10 +13,11 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
     def __init__(self, points: list[QPointF], controls: list[list[QPointF]] | None = None):
 
+        self._points: list[QPointF] = list(points)
+
         QGraphicsPathItem.__init__(self)
         ResizableGraphicsItem.__init__(self)
 
-        self._points: list[QPointF] = list(points)
         self._controls: list[list[QPointF]] = (
             controls if controls is not None else self._compute_initial_controls(self._points)
         )
@@ -25,13 +26,13 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
         self._rebuild_path()
 
-        # Dans __init__, remplace la boucle d'ajout de handles :
+        # remplace la boucle d'ajout de handles :
         for index, point in enumerate(self._points):
-            self.add_handle(f"point_{index}", point, style=ANCHOR_STYLE)
+            self.add_handle(f"point_{index}", point, style=ANCHOR_STYLE, cursor=Qt.CursorShape.SizeAllCursor)
 
         for seg_index, (cp1, cp2) in enumerate(self._controls):
-            self.add_handle(f"cp1_{seg_index}", cp1, style=CONTROL_STYLE)
-            self.add_handle(f"cp2_{seg_index}", cp2, style=CONTROL_STYLE)
+            self.add_handle(f"cp1_{seg_index}", cp1, style=CONTROL_STYLE, cursor=Qt.CursorShape.SizeAllCursor)
+            self.add_handle(f"cp2_{seg_index}", cp2, style=CONTROL_STYLE, cursor=Qt.CursorShape.SizeAllCursor)
 
             self._create_guide_line(f"cp1_{seg_index}")
             self._create_guide_line(f"cp2_{seg_index}")
@@ -95,6 +96,9 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
         """Mise à jour de la courbe lorsqu'un handle (point ou contrôle) est déplacé."""
+
+        if not self.get_item_is_resizable(): return  # The item is not resizable.
+
         if self._updating_handles:
             return
 
@@ -106,7 +110,7 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
             fixed_prev = self.mapToScene(self._points[index - 1]) if index > 0 else None
             fixed_next = self.mapToScene(self._points[index + 1]) if index < len(self._points) - 1 else None
 
-            snap_point_other = self._find_snap_point(self.scene(), scene_pos, exclude_item=self)
+            snap_point_other = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
             snap_result = None
 
             if snap_point_other:
@@ -142,9 +146,29 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self._rebuild_path()
         self.update_handles_position()
 
-    def get_point_of_interest(self) -> list[QPointF]:
-        anchors = self.get_anchor_points_scene()
+    def _calcul_point_of_interest(self):
+        anchors = self._points
         points = list(anchors)
+
+        return points
+
+    def _add_point_of_interest(self):
+
+        for p in self._calcul_point_of_interest() :
+            self.add_point_of_interest(p)
+
+        return self._custom_points_of_interest
+
+    def _update_point_of_interest(self):
+
+        for index, p in enumerate(self._calcul_point_of_interest()) :
+            self.replace_point_of_interest(p, index)
+
+    def get_point_of_interest(self) -> list[QPointF]:
+
+        points: list[QPointF] = []
+        for point in self._custom_points_of_interest:
+            points.append(self.mapToScene(point))
 
         return points
 
@@ -178,10 +202,13 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.save_item_geometry()
+        self._begin_resize(self)
 
     def handle_released(self, role: str, event: QGraphicsSceneMouseEvent):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
         self.save_history_geometry()
+        self._update_point_of_interest()
+        self._end_resize()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         if self.flags().__contains__(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable):
@@ -278,4 +305,10 @@ class BezierCubeLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         )
 
         item.setTransform(transform)
+
+        points_data = data.get("points_of_interest", [])
+        for p in points_data:
+            point: QPointF = AdpaterItem.point_from_dict(p["p"])
+            item.add_point_of_interest(point)
+
         return item

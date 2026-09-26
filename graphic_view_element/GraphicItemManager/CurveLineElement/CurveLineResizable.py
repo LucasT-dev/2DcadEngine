@@ -40,10 +40,11 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
     def __init__(self, points: list[QPointF]):
 
+        self._points: list[QPointF] = list(points)
+
         QGraphicsPathItem.__init__(self)
         ResizableGraphicsItem.__init__(self)
 
-        self._points: list[QPointF] = list(points)
         self._rebuild_path()
 
         # Ajoute un handle par sommet de la polyligne
@@ -61,18 +62,15 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
     def _rebuild_path(self):
         self.setPath(build_smooth_path(self._points))
 
-    def get_point_of_interest(self) -> list[QPointF]:
-        anchors = self.get_anchor_points_scene()
-        points = list(anchors)
-
-        return points
-
     def get_anchor_points_scene(self) -> list[QPointF]:
         """Points d'ancrage de la courbe (hors points de contrôle Bézier), en coordonnées scène."""
         return [self.mapToScene(p) for p in self._points]
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
         """Mise à jour de la polyligne lorsqu'un handle est déplacé."""
+
+        if not self.get_item_is_resizable(): return  # The item is not resizable.
+
         index = self._index_from_role(role)
         new_pos = self.mapFromScene(event.scenePos())
         scene_pos = event.scenePos()
@@ -80,7 +78,7 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         fixed_prev = self.mapToScene(self._points[index - 1]) if index > 0 else None
         fixed_next = self.mapToScene(self._points[index + 1]) if index < len(self._points) - 1 else None
 
-        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, exclude_item=self)
+        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
 
         snap_result = None
 
@@ -110,6 +108,32 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self._rebuild_path()
         self.update_handles_position()
 
+    def _calcul_point_of_interest(self):
+        anchors = self._points
+        points = list(anchors)
+
+        return points
+
+    def _add_point_of_interest(self):
+
+        for p in self._calcul_point_of_interest() :
+            self.add_point_of_interest(p)
+
+        return self._custom_points_of_interest
+
+    def _update_point_of_interest(self):
+
+        for index, p in enumerate(self._calcul_point_of_interest()) :
+            self.replace_point_of_interest(p, index)
+
+    def get_point_of_interest(self) -> list[QPointF]:
+
+        points: list[QPointF] = []
+        for point in self._custom_points_of_interest:
+            points.append(self.mapToScene(point))
+
+        return points
+
     def update_handles_position(self):
         for index, point in enumerate(self._points):
             self.handles[self._role(index)].setPos(point)
@@ -118,11 +142,14 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         """Gestion de l'appui sur un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.save_item_geometry()
+        self._begin_resize(self)
 
     def handle_released(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement d'un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
         self.save_history_geometry()
+        self._update_point_of_interest()
+        self._end_resize()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur la polyligne."""
@@ -216,6 +243,11 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         )
 
         item.setTransform(transform)
+
+        points_data = data.get("points_of_interest", [])
+        for p in points_data:
+            point: QPointF = AdpaterItem.point_from_dict(p["p"])
+            item.add_point_of_interest(point)
 
         return item
 

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QPointF, Qt, QTimer
+from PyQt6.QtCore import QPointF, Qt, QTimer, QLineF
 from PyQt6.QtGui import QTransform
 from PyQt6.QtWidgets import QGraphicsTextItem, QGraphicsItem, QGraphicsSceneMouseEvent
 
@@ -18,6 +18,7 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
         self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
 
         self._create_handles()
+
 
     def _create_handles(self):
 
@@ -41,6 +42,8 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
 
+        if not self.get_item_is_resizable(): return  # The item is not resizable.
+
         rect = self.boundingRect()
         new_pos = self.mapFromScene(event.scenePos())
 
@@ -58,17 +61,69 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
 
         QTimer.singleShot(0, self.update_handles_position)
 
+    def _calcul_point_of_interest(self):
+        rect = self.boundingRect()
+
+        tl = rect.topLeft()
+        tr = rect.topRight()
+        br = rect.bottomRight()
+        bl = rect.bottomLeft()
+        c = rect.center()
+
+        tm = (QPointF((tl.x() + tr.x()) / 2, (tl.y() + tr.y()) / 2))
+        bm = (QPointF((br.x() + bl.x()) / 2, (br.y() + bl.y()) / 2))
+        lm = (QPointF((tl.x() + bl.x()) / 2, (tl.y() + bl.y()) / 2))
+        rm = (QPointF((tr.x() + br.x()) / 2, (tr.y() + br.y()) / 2))
+
+        return [tl, tr, br, bl, c, tm, bm, lm, rm]
+
+    def _add_point_of_interest(self):
+
+        for p in self._calcul_point_of_interest() :
+            self.add_point_of_interest(p)
+
+        return self._custom_points_of_interest
+
+    def _update_point_of_interest(self):
+
+        for index, p in enumerate(self._calcul_point_of_interest()) :
+            self.replace_point_of_interest(p, index)
+
+    def get_point_of_interest(self) -> list[QPointF]:
+
+        points: list[QPointF] = []
+        for point in self._custom_points_of_interest:
+            points.append(self.mapToScene(point))
+
+        return points
+
+    def get_line_of_interest(self) -> list[QLineF]:
+        rect = self.boundingRect()
+
+        tl = self.mapToScene(rect.topLeft())
+        tr = self.mapToScene(rect.topRight())
+        br = self.mapToScene(rect.bottomRight())
+        bl = self.mapToScene(rect.bottomLeft())
+
+        return [
+            QLineF(tl, tr),  # côté haut
+            QLineF(tr, br),  # côté droit
+            QLineF(br, bl),  # côté bas
+            QLineF(bl, tl),  # côté gauche
+        ]
+
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
-
         self.save_item_geometry()
+        self._begin_resize(self)
 
     def handle_released(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement d'un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-
         self.save_history_geometry()
+        self._update_point_of_interest()
+        self._end_resize()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur l'ellipse."""
@@ -183,5 +238,10 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
         )
 
         item.setTransform(transform)
+
+        points_data = data.get("points_of_interest", [])
+        for p in points_data:
+            point: QPointF = AdpaterItem.point_from_dict(p["p"])
+            item.add_point_of_interest(point)
 
         return item

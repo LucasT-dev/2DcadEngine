@@ -1,5 +1,4 @@
 import importlib
-import typing
 
 from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF
 from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap, QPageSize, \
@@ -7,7 +6,6 @@ from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, 
 from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
     QGraphicsTextItem
-from PyQt6.uic.properties import QtGui
 
 from libs.cadengine.draw.CameraManager import Camera
 from libs.cadengine.draw.AnnotationManager import AnnotationManager
@@ -478,6 +476,7 @@ class GraphicView(QGraphicsView):
 
     def g_serialize_items(self, item_list) -> list[dict]:
         """Parcourt tous les items et sérialise ceux appartenant à un GraphicElementObject."""
+        print("g_serialize_items")
         if not self.scene():
             return []
 
@@ -488,19 +487,34 @@ class GraphicView(QGraphicsView):
 
         for item in item_list:
 
-            parent = item.parentItem()
-            if parent and any(isinstance(parent, cls) for cls in resizable_classes):
-                continue  # ne pas enregistrer les enfants (déjà dans le groupe)
+            print(f"Item : {item}")
 
+            parent = item.parentItem()
+            print(parent)
+            if parent and any(isinstance(parent, cls) for cls in resizable_classes):
+                print("continue 1")
+                continue  # ne pas enregistrer les enfants (déjà dans le groupe)
+            print("check item est resize ?")
             # Vérifie si l'item est un Resizable (ou un type enregistré)
+            print(resizable_classes)
+
+            print(len(resizable_classes))
+
+            for cls in resizable_classes:
+                print(f"Cls : {cls} is item {item} = {isinstance(item, cls)}" )
+
+
             if any(isinstance(item, cls) for cls in resizable_classes):
+                print("Item est un resize")
 
                 # Vérifie que l'item possède bien une méthode to_dict
                 if hasattr(item, "to_dict") and callable(item.to_dict):
+                    print("have dict method")
                     serialized_items.append(item.to_dict())
                 else:
                     print(f"[WARN] L'item {item} est resizable mais n'a pas de méthode to_dict()")
 
+        print(f"serialized_items : {serialized_items}")
         return serialized_items
 
     def g_deserialize_items(self, data_list: list[dict]) -> list[QGraphicsItem]:
@@ -521,8 +535,14 @@ class GraphicView(QGraphicsView):
             class_path = entry.get("data", {}).get("class")
             resizable_class = self.resolve_class_from_path(class_path)
 
+            print(class_path)
+            print(resizable_class)
+
+
             try:
                 item = resizable_class.from_dict(data=entry)
+
+                print(item)
 
                 if item:
                     deserialized_items.append(item)
@@ -946,6 +966,9 @@ class GraphicView(QGraphicsView):
         à leur centroïde. Le groupe n'est PAS ajouté à la scène ici — c'est
         au code appelant de le faire (placement, ou ajout direct).
         """
+        print("g_build_temporary_group")
+        print(items)
+
         if not items:
             raise ValueError("Impossible de créer un groupe vide")
 
@@ -957,19 +980,24 @@ class GraphicView(QGraphicsView):
             center += item.pos()
         center /= len(items)
 
+        print("center")
+
         group = GroupElement.create_custom_graphics_item(
             first_point=QPointF(0, 0), second_point=QPointF(0, 0),
-            border_color=QColor(0, 0, 0, 255), border_style=Qt.PenStyle.SolidLine,
-            border_width=1, fill_color=QColor(0, 0, 0, 0)
+            border_color=QColor(0, 255, 0, 0), border_style=Qt.PenStyle.SolidLine,
+            border_width=10, fill_color=QColor(0, 255, 0, 0), items=items
         )
+
+        print("group create")
+
         group.setPos(center)
 
-        print(group)
+        print(f"group : {group}")
 
-        for item in items:
+        """for item in items:
             print(item)
 
-            group.add_to_group(item)
+            group.add_to_group(item)"""
 
         return group
 

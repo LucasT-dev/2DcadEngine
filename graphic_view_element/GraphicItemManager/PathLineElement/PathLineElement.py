@@ -11,7 +11,7 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.PathLineElement.Path
 
 class PathLineElement(ElementObject):
 
-    def create_graphics_item(self, points: list[QPointF]):
+    def create_graphics_item(self, points: list[QPointF]) -> PathLineResizable :
 
         pen = QPen(QColor(self.get_style().get_border_color()))
         pen.setWidth(self.get_style().get_border_width())
@@ -22,6 +22,7 @@ class PathLineElement(ElementObject):
         item.setZValue(self.get_style().get_z_value())
 
         item.set_snap_enable(True)
+        #item.item_can_be_resizable(True)
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -43,9 +44,11 @@ class PathLineElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> PathLineResizable:
+        print("0")
 
         pen = QPen(QColor(border_color))
         pen.setWidth(border_width)
@@ -56,9 +59,12 @@ class PathLineElement(ElementObject):
         item.setZValue(z_value)
 
         item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable=is_resizable)
 
         item.setFlags(flags)
 
         item.setData(key, value)
+
+        print(item)
 
         return item

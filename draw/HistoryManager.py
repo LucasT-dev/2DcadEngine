@@ -255,8 +255,6 @@ class ModifyItemPropertiesCommand(QUndoCommand):
                 self.item.setTextWidth(props["text_width"])
 
 
-
-
 class GroupItemsCommand(QUndoCommand):
 
     def __init__(self, scene, description="Group items", selected_items = None):
@@ -282,8 +280,8 @@ class GroupItemsCommand(QUndoCommand):
 
         # Crée le groupe
         self._group = GroupElement.create_custom_graphics_item(first_point=QPointF(0,0), second_point=QPointF(0,0),
-                                                               border_color=QColor(0,0,0,255), border_style=Qt.PenStyle.SolidLine,
-                                                               border_width=1, fill_color=QColor(0,0,0,0)) # GroupResizable(QRectF(0,0,0,0))
+                                                               border_color=QColor(0,0,0,0), border_style=Qt.PenStyle.SolidLine,
+                                                               border_width=0, fill_color=QColor(0,0,0,0))
         self.scene().addItem(self._group)
         self._group.setPos(center)
 

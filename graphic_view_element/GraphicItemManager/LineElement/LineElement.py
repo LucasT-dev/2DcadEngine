@@ -11,7 +11,7 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.LineElement.LineResi
 
 class LineElement(ElementObject):
 
-    def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF) -> LineResizable:
 
         pen = QPen(QColor(self.get_style().get_border_color()))
         pen.setWidth(self.get_style().get_border_width())
@@ -43,9 +43,10 @@ class LineElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> LineResizable:
 
         pen = QPen(QColor(border_color))
         pen.setWidth(border_width)
@@ -56,6 +57,7 @@ class LineElement(ElementObject):
         item.setZValue(z_value)
 
         item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable=is_resizable)
 
         item.setFlags(flags)
 

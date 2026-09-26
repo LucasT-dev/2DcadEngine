@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QRectF, QPointF
+from PyQt6.QtCore import QRectF, QPointF, QLineF
 from PyQt6.QtGui import QTransform
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 from PyQt6.QtWidgets import QGraphicsItem, QGraphicsSceneMouseEvent
@@ -19,15 +19,52 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
 
         self.rect = QRectF(self.boundingRect())
 
-        self.update_handles_position()
+    @staticmethod
+    def _top_left(rect: QRectF) -> QPointF:
+        return rect.topLeft()
+
+    @staticmethod
+    def _top_right(rect: QRectF) -> QPointF:
+        return rect.topRight()
+
+    @staticmethod
+    def _bottom_left(rect: QRectF) -> QPointF:
+        return rect.bottomLeft()
+
+    @staticmethod
+    def _bottom_right(rect: QRectF) -> QPointF:
+        return rect.bottomRight()
+
+    @staticmethod
+    def _mid_top(rect: QRectF) -> QPointF:
+        return QPointF((rect.left() + rect.right()) / 2, rect.top())
+
+    @staticmethod
+    def _mid_bottom(rect: QRectF) -> QPointF:
+        return QPointF((rect.left() + rect.right()) / 2, rect.bottom())
+
+    @staticmethod
+    def _mid_left(rect: QRectF) -> QPointF:
+        return QPointF(rect.left(), (rect.top() + rect.bottom()) / 2)
+
+    @staticmethod
+    def _mid_right(rect: QRectF) -> QPointF:
+        return QPointF(rect.right(), (rect.top() + rect.bottom()) / 2)
+
 
     def _create_handles(self):
         """Crée les 4 Handles de redimensionnement."""
         rect = self.boundingRect()
-        self.add_handle("top_left", rect.topLeft())
-        self.add_handle("top_right", rect.topRight())
-        self.add_handle("bottom_left", rect.bottomLeft())
-        self.add_handle("bottom_right", rect.bottomRight())
+        self.add_handle("top_left", self._top_left(rect))
+        self.add_handle("top_right", self._top_right(rect))
+        self.add_handle("bottom_left", self._bottom_left(rect))
+        self.add_handle("bottom_right", self._bottom_right(rect))
+
+        self.add_handle("top", self._mid_top(rect))
+        self.add_handle("bottom", self._mid_bottom(rect))
+        self.add_handle("left", self._mid_left(rect))
+        self.add_handle("right", self._mid_right(rect))
+
         self.update_handles_position()
 
     def update_handles_position(self):
@@ -36,51 +73,62 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
         if not self.handles:
             return
 
-        self.handles["top_left"].setPos(rect.topLeft())
-        self.handles["top_right"].setPos(rect.topRight())
-        self.handles["bottom_left"].setPos(rect.bottomLeft())
-        self.handles["bottom_right"].setPos(rect.bottomRight())
+        self.handles["top_left"].setPos(self._top_left(rect))
+        self.handles["top_right"].setPos(self._top_right(rect))
+        self.handles["bottom_left"].setPos(self._bottom_left(rect))
+        self.handles["bottom_right"].setPos(self._bottom_right(rect))
+
+        self.handles["top"].setPos(self._mid_top(rect))
+        self.handles["bottom"].setPos(self._mid_bottom(rect))
+        self.handles["left"].setPos(self._mid_left(rect))
+        self.handles["right"].setPos(self._mid_right(rect))
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
 
-        # Position souris en coordonnées scène
-        scene_pos = event.scenePos()
+        if not self.get_item_is_resizable():
+            return
 
-        # Rectangle courant (local)
+        scene_pos = event.scenePos()
+        local_pos = self.mapFromScene(scene_pos)
         rect = self.boundingRect()
 
-        # Point d’ancrage opposé
+        if role in ("top_left", "top_right", "bottom_left", "bottom_right"):
+            anchor = {
+                "top_left": rect.bottomRight(),
+                "top_right": rect.bottomLeft(),
+                "bottom_left": rect.topRight(),
+                "bottom_right": rect.topLeft(),
+            }[role]
 
-        if role == "top_left":
-            anchor = rect.bottomRight()
-        if role == "top_right":
-            anchor = rect.bottomLeft()
-        if role == "bottom_left":
-            anchor = rect.topRight()
-        if role == "bottom_right":
-            anchor = rect.topLeft()
+            new_width = abs(local_pos.x() - anchor.x())
+            new_height = abs(local_pos.y() - anchor.y())
 
-        # Position de la souris convertie en local
-        local_pos = self.mapFromScene(scene_pos)
+        elif role in ("top", "bottom"):
+            # Redimensionnement vertical seul : l'ancrage horizontal ne bouge pas,
+            # donc la largeur reste inchangée (scale_x = 1).
+            anchor = rect.bottomLeft() if role == "top" else rect.topLeft()
 
-        # Tailles actuelles
+            new_width = rect.width()
+            new_height = abs(local_pos.y() - anchor.y())
+
+        elif role in ("left", "right"):
+            anchor = rect.topRight() if role == "left" else rect.topLeft()
+
+            new_width = abs(local_pos.x() - anchor.x())
+            new_height = rect.height()
+
+        else:
+            return
+
         old_width = rect.width()
         old_height = rect.height()
 
-        new_width = abs(local_pos.x() - anchor.x())
-        new_height = abs(local_pos.y() - anchor.y())
-
-        if old_width == 0 or old_height == 0:
+        if old_width < 1e-6 or old_height < 1e-6:
             return
 
-        scale_x = new_width / old_width
-        scale_y = new_height / old_height
+        scale_x = max(new_width / old_width, 0.01)
+        scale_y = max(new_height / old_height, 0.01)
 
-        # Éviter l’inversion
-        scale_x = max(scale_x, 0.01)
-        scale_y = max(scale_y, 0.01)
-
-        # Appliquer l’échelle autour de l’ancrage
         t = QTransform()
         t.translate(anchor.x(), anchor.y())
         t.scale(scale_x, scale_y)
@@ -89,17 +137,16 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
         self.setTransform(t, True)
 
         self.prepareGeometryChange()
-
         self.update_handles_position()
 
-    def get_point_of_interest(self) -> list[QPointF]:
+    def _calcul_point_of_interest(self):
         rect = self.boundingRect()
 
-        tl = self.mapToScene(rect.topLeft())
-        tr = self.mapToScene(rect.topRight())
-        br = self.mapToScene(rect.bottomRight())
-        bl = self.mapToScene(rect.bottomLeft())
-        c = self.mapToScene(rect.center())
+        tl = rect.topLeft()
+        tr = rect.topRight()
+        br = rect.bottomRight()
+        bl = rect.bottomLeft()
+        c = rect.center()
 
         tm = (QPointF((tl.x() + tr.x()) / 2, (tl.y() + tr.y()) / 2))
         bm = (QPointF((br.x() + bl.x()) / 2, (br.y() + bl.y()) / 2))
@@ -108,16 +155,54 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
 
         return [tl, tr, br, bl, c, tm, bm, lm, rm]
 
+    def _add_point_of_interest(self):
+
+        for p in self._calcul_point_of_interest() :
+            self.add_point_of_interest(p)
+
+        return self._custom_points_of_interest
+
+    def _update_point_of_interest(self):
+
+        for index, p in enumerate(self._calcul_point_of_interest()) :
+            self.replace_point_of_interest(p, index)
+
+    def get_point_of_interest(self) -> list[QPointF]:
+
+        points: list[QPointF] = []
+        for point in self._custom_points_of_interest:
+            points.append(self.mapToScene(point))
+
+        return points
+
+    def get_line_of_interest(self) -> list[QLineF]:
+        rect = self.boundingRect()
+
+        tl = self.mapToScene(rect.topLeft())
+        tr = self.mapToScene(rect.topRight())
+        br = self.mapToScene(rect.bottomRight())
+        bl = self.mapToScene(rect.bottomLeft())
+
+        return [
+            QLineF(tl, tr),  # côté haut
+            QLineF(tr, br),  # côté droit
+            QLineF(br, bl),  # côté bas
+            QLineF(bl, tl),  # côté gauche
+        ]
+
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.update_handles_size(self.transform().m11())
         self.save_item_geometry()
+        self._begin_resize(self)
 
     def handle_released(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement d'un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
         self.save_history_geometry()
+        self._update_point_of_interest()
+        self._end_resize()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur le pixmap."""
@@ -220,6 +305,11 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
         )
 
         item.setTransform(transform)
+
+        points_data = data.get("points_of_interest", [])
+        for p in points_data:
+            point: QPointF = AdpaterItem.point_from_dict(p["p"])
+            item.add_point_of_interest(point)
 
         return item
 

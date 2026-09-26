@@ -3,14 +3,17 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
 
-
 @dataclass
 class HandleStyle:
     """Définit l'apparence d'un Handle. Librement personnalisable ou remplaçable."""
 
-    shape: str = "ellipse"              # "ellipse" ou "rect"
-    base_size: float = 8.0              # taille de base en pixels écran (avant zoom)
-    min_size: float = 3.0               # taille minimum en pixels scène (zoom élevé)
+    shape: str = "rect" # "ellipse" ou "rect"
+    base_size: float = 8.0 # taille de base en pixels écran (avant zoom)
+    min_size: float = 5.0 # taille minimum en pixels scène (zoom élevé)
+    max_size: float = 6.0
+    min_pen_width_size = 3.0 # Taille minimum de l'épaisseur du pen
+    max_pen_width_size = 4.0 # Taille minimum de l'épaisseur du pen
+
     border_color: QColor = field(default_factory=lambda: QColor(0, 204, 204, 255))
     fill_color: QColor = field(default_factory=lambda: QColor(0, 0, 0, 0))
     border_width: float = 3.0
@@ -38,6 +41,6 @@ CONTROL_STYLE = HandleStyle(
 )
 
 GUIDE_LINE_STYLE = HandleStyle(
-    border_color=QColor(255, 140, 0, 150),  # même teinte que CONTROL_STYLE, plus transparente
+    border_color=QColor(255, 140, 0, 150),
     border_width=1.5,
 )

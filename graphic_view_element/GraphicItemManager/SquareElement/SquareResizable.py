@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QRectF, QPointF, QTimer
+from PyQt6.QtCore import QRectF, QPointF, QTimer, QLineF
 from PyQt6.QtGui import QPen, QBrush, QTransform
 from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphicsItem
 
@@ -17,13 +17,52 @@ class SquareResizable(ResizableGraphicsItem, QGraphicsRectItem):
         # Création des 4 Handles de redimensionnement
         self._create_handles()
 
+    @staticmethod
+    def _top_left(rect: QRectF) -> QPointF:
+        return rect.topLeft()
+
+    @staticmethod
+    def _top_right(rect: QRectF) -> QPointF:
+        return rect.topRight()
+
+    @staticmethod
+    def _bottom_left(rect: QRectF) -> QPointF:
+        return rect.bottomLeft()
+
+    @staticmethod
+    def _bottom_right(rect: QRectF) -> QPointF:
+        return rect.bottomRight()
+
+    @staticmethod
+    def _mid_top(rect: QRectF) -> QPointF:
+        return QPointF((rect.left() + rect.right()) / 2, rect.top())
+
+    @staticmethod
+    def _mid_bottom(rect: QRectF) -> QPointF:
+        return QPointF((rect.left() + rect.right()) / 2, rect.bottom())
+
+    @staticmethod
+    def _mid_left(rect: QRectF) -> QPointF:
+        return QPointF(rect.left(), (rect.top() + rect.bottom()) / 2)
+
+    @staticmethod
+    def _mid_right(rect: QRectF) -> QPointF:
+        return QPointF(rect.right(), (rect.top() + rect.bottom()) / 2)
+
     def _create_handles(self):
         """Crée les 4 Handles de redimensionnement."""
         rect = self.rect()
-        self.add_handle("top_left", rect.topLeft())
-        self.add_handle("top_right", rect.topRight())
-        self.add_handle("bottom_left", rect.bottomLeft())
-        self.add_handle("bottom_right", rect.bottomRight())
+
+        self.add_handle("top_left", self._top_left(rect))
+        self.add_handle("top_right", self._top_right(rect))
+        self.add_handle("bottom_left", self._bottom_left(rect))
+        self.add_handle("bottom_right", self._bottom_right(rect))
+
+        self.add_handle("top", self._mid_top(rect))
+        self.add_handle("bottom", self._mid_bottom(rect))
+        self.add_handle("left", self._mid_left(rect))
+        self.add_handle("right", self._mid_right(rect))
+
         self.update_handles_position()
 
     def update_handles_position(self):
@@ -36,47 +75,65 @@ class SquareResizable(ResizableGraphicsItem, QGraphicsRectItem):
         self.handles["bottom_left"].setPos(rect.bottomLeft())
         self.handles["bottom_right"].setPos(rect.bottomRight())
 
+        self.handles["top"].setPos(self._mid_top(rect))
+        self.handles["bottom"].setPos(self._mid_bottom(rect))
+        self.handles["left"].setPos(self._mid_left(rect))
+        self.handles["right"].setPos(self._mid_right(rect))
+
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
         """Appelé quand un handle est déplacé (par Handle)."""
+
+        if not self.get_item_is_resizable(): return  # The item is not resizable.
+
         # Convertit la position de la scène vers le repère local
         scene_pos = event.scenePos()
         local_pos = self.mapFromScene(scene_pos)
         rect = QRectF(self.rect())
 
-        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, exclude_item=self)
-
+        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
         if snap_point_other_q_graphics_item:
             local_pos = self.mapFromScene(snap_point_other_q_graphics_item)
 
-        fixed = {
-            "bottom_right": rect.topLeft(),
-            "bottom_left": rect.topRight(),
-            "top_right": rect.bottomLeft(),
-            "top_left": rect.bottomRight(),
-        }[role]
+        if role in ("top_left", "top_right", "bottom_left", "bottom_right"):
+            fixed = {
+                "bottom_right": rect.topLeft(),
+                "bottom_left": rect.topRight(),
+                "top_right": rect.bottomLeft(),
+                "top_left": rect.bottomRight(),
+            }[role]
 
-        # Calcule dx/dy vers le coin actif
-        dx = local_pos.x() - fixed.x()
-        dy = local_pos.y() - fixed.y()
+            dx = local_pos.x() - fixed.x()
+            dy = local_pos.y() - fixed.y()
 
-        size = max(abs(dx), abs(dy))
-        dx = size if dx >= 0 else -size
-        dy = size if dy >= 0 else -size
+            size = max(abs(dx), abs(dy))
+            dx = size if dx >= 0 else -size
+            dy = size if dy >= 0 else -size
 
-        rect = QRectF(fixed, QPointF(fixed.x() + dx, fixed.y() + dy)).normalized()
+            rect = QRectF(fixed, QPointF(fixed.x() + dx, fixed.y() + dy))
+
+        elif role in ("top", "bottom", "left", "right"):
+            center = rect.center()
+            if role in ("top", "bottom"):
+                new_radius = abs(local_pos.y() - center.y())
+            else:
+                new_radius = abs(local_pos.x() - center.x())
+            rect = QRectF(
+                center.x() - new_radius, center.y() - new_radius,
+                new_radius * 2, new_radius * 2
+            )
 
         rect = rect.normalized()
         self.setRect(rect)
         QTimer.singleShot(0, self.update_handles_position)
 
-    def get_point_of_interest(self) -> list[QPointF]:
+    def _calcul_point_of_interest(self):
         rect = self.boundingRect()
 
-        tl = self.mapToScene(rect.topLeft())
-        tr = self.mapToScene(rect.topRight())
-        br = self.mapToScene(rect.bottomRight())
-        bl = self.mapToScene(rect.bottomLeft())
-        c = self.mapToScene(rect.center())
+        tl = rect.topLeft()
+        tr = rect.topRight()
+        br = rect.bottomRight()
+        bl = rect.bottomLeft()
+        c = rect.center()
 
         tm = (QPointF((tl.x() + tr.x()) / 2, (tl.y() + tr.y()) / 2))
         bm = (QPointF((br.x() + bl.x()) / 2, (br.y() + bl.y()) / 2))
@@ -85,17 +142,54 @@ class SquareResizable(ResizableGraphicsItem, QGraphicsRectItem):
 
         return [tl, tr, br, bl, c, tm, bm, lm, rm]
 
+    def _add_point_of_interest(self):
+
+        for p in self._calcul_point_of_interest() :
+            self.add_point_of_interest(p)
+
+        return self._custom_points_of_interest
+
+    def _update_point_of_interest(self):
+
+        for index, p in enumerate(self._calcul_point_of_interest()) :
+            self.replace_point_of_interest(p, index)
+
+    def get_point_of_interest(self) -> list[QPointF]:
+
+        points: list[QPointF] = []
+        for point in self._custom_points_of_interest:
+            points.append(self.mapToScene(point))
+
+        return points
+
+    def get_line_of_interest(self) -> list[QLineF]:
+        rect = self.rect()
+
+        tl = self.mapToScene(rect.topLeft())
+        tr = self.mapToScene(rect.topRight())
+        br = self.mapToScene(rect.bottomRight())
+        bl = self.mapToScene(rect.bottomLeft())
+
+        return [
+            QLineF(tl, tr),  # côté haut
+            QLineF(tr, br),  # côté droit
+            QLineF(br, bl),  # côté bas
+            QLineF(bl, tl),  # côté gauche
+        ]
+
+
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
-
         self.save_item_geometry()
+        self._begin_resize(self)
 
     def handle_released(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement d'un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-
         self.save_history_geometry()
+        self._update_point_of_interest()
+        self._end_resize()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur l'ellipse."""
@@ -192,6 +286,12 @@ class SquareResizable(ResizableGraphicsItem, QGraphicsRectItem):
             scale=item_data["scale"],
             flags=flags
         )
+
         item.setTransform(transform)
+
+        points_data = data.get("points_of_interest", [])
+        for p in points_data:
+            point: QPointF = AdpaterItem.point_from_dict(p["p"])
+            item.add_point_of_interest(point)
 
         return item

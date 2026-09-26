@@ -1,5 +1,3 @@
-from typing import List
-
 from PyQt6.QtCore import QPointF, QLineF
 from PyQt6.QtGui import QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsSceneMouseEvent, QGraphicsItem
@@ -21,6 +19,9 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.add_handle("end", self.line().p2())
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
+
+        if not self.get_item_is_resizable() : return # The item is not resizable.
+
         new_pos = self.mapFromScene(event.scenePos())
         line: QLineF = self.line()
         scene_pos = event.scenePos()
@@ -32,7 +33,7 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
             fixed = self.mapToScene(line.p1())
 
         snap_angle = self._find_angle_auto(fixed, scene_pos)
-        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, exclude_item=self)
+        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
 
         if snap_point_other_q_graphics_item:
             new_pos = self.mapFromScene(snap_point_other_q_graphics_item)
@@ -47,20 +48,43 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.setLine(line)
         self.update_handles_position()
 
-    def get_point_of_interest(self) -> list[QPointF]:
-        print("get_point_of_interest")
+    def _calcul_point_of_interest(self):
         line = self.line()
 
-        print("0")
+        p1 = line.p1()
+        p2 = line.p2()
+        mid = QPointF((p1.x() + p2.x()) / 2, (p1.y() + p2.y()) / 2)
+
+        return [p1, p2, mid]
+
+    def _add_point_of_interest(self):
+
+        for p in self._calcul_point_of_interest() :
+            self.add_point_of_interest(p)
+
+        return self._custom_points_of_interest
+
+    def _update_point_of_interest(self):
+
+        for index, p in enumerate(self._calcul_point_of_interest()) :
+            self.replace_point_of_interest(p, index)
+
+    def get_point_of_interest(self) -> list[QPointF]:
+
+        points: list[QPointF] = []
+        for point in self._custom_points_of_interest:
+            points.append(self.mapToScene(point))
+
+        return points
+
+    def get_line_of_interest(self) -> list[QLineF]:
+
+        line = self.line()
 
         p1 = self.mapToScene(line.p1())
-        print("1")
         p2 = self.mapToScene(line.p2())
-        print("2")
-        mid = QPointF((p1.x() + p2.x()) / 2, (p1.y() + p2.y()) / 2)
-        print("3")
-        #print("result : " + [p1, p2, mid])
-        return [p1, p2, mid]
+
+        return [QLineF(p1, p2)]
 
     def update_handles_position(self):
         self.handles["start"].setPos(self.line().p1())
@@ -69,15 +93,15 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
     def handle_press(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
-
-        # Systeme de sauvegarde de l'item
         self.save_item_geometry()
+        self._begin_resize(self)
 
     def handle_released(self, role: str, event: QGraphicsSceneMouseEvent):
         """Gestion du relâchement d'un handle."""
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
-
         self.save_history_geometry()
+        self._update_point_of_interest()
+        self._end_resize()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur ligne."""
@@ -174,10 +198,20 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
             transform=QTransform(),
             visibility=item_data["visibility"],
             scale=item_data["scale"],
+
+            is_resizable=item_data["is_resizable"],
+
             flags=flags
         )
 
         item.setTransform(transform)
+
+        points_data = data.get("points_of_interest", [])
+        for p in points_data:
+            point: QPointF = AdpaterItem.point_from_dict(p["p"])
+            item.add_point_of_interest(point)
+
+        item.set_snap_enable(item_data["snap_point_enable"])
 
         return item
 

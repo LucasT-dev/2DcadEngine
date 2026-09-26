@@ -121,6 +121,7 @@ class GraphicElementObject:
 
     def set_resizable_class(self, cls: ResizableGraphicsItem):
         """Définit la classe de l'item graphique"""
+        print(f"resizable class register : {cls}")
         self._resizable_class = cls
         return self
 

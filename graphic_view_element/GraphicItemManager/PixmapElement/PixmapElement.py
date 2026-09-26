@@ -13,7 +13,7 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.PixmapElement.Pixmap
 
 class PixmapElement(ElementObject):
 
-    def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF) -> PixmapResizable:
 
         current_dir = Path(__file__).parent
         image_path = str(current_dir.parents[2] / "image" / "default.png")
@@ -64,9 +64,10 @@ class PixmapElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> PixmapResizable :
 
         pixmap = QPixmap(image_source)
 
@@ -80,6 +81,7 @@ class PixmapElement(ElementObject):
         item.setZValue(z_value)
 
         item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable)
 
         item.setFlags(flags)
         item.setData(key, value)

@@ -8,12 +8,11 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.CurveLineElement.Cur
     CurveLineResizable
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
-from libs.cadengine.graphic_view_element.GraphicItemManager.PathLineElement.PathLineResizable import PathLineResizable
 
 
 class CurveLineElement(ElementObject):
 
-    def create_graphics_item(self, points: list[QPointF]):
+    def create_graphics_item(self, points: list[QPointF]) -> CurveLineResizable :
 
         pen = QPen(QColor(self.get_style().get_border_color()))
         pen.setWidth(self.get_style().get_border_width())
@@ -45,9 +44,10 @@ class CurveLineElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> CurveLineResizable :
 
         pen = QPen(QColor(border_color))
         pen.setWidth(border_width)
@@ -58,6 +58,7 @@ class CurveLineElement(ElementObject):
         item.setZValue(z_value)
 
         item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable)
 
         item.setFlags(flags)
 

@@ -4,11 +4,21 @@ from PyQt6.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem, QWidget
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
+ROLE_CURSORS = {
+    "top": Qt.CursorShape.SizeVerCursor,
+    "bottom": Qt.CursorShape.SizeVerCursor,
+    "left": Qt.CursorShape.SizeHorCursor,
+    "right": Qt.CursorShape.SizeHorCursor,
+    "top_left": Qt.CursorShape.SizeBDiagCursor,
+    "bottom_right": Qt.CursorShape.SizeBDiagCursor,
+    "top_right": Qt.CursorShape.SizeFDiagCursor,
+    "bottom_left": Qt.CursorShape.SizeFDiagCursor,
+}
 
 class Handle(QGraphicsItem):
 
     def __init__(self, parent: QGraphicsItem, position: QPointF, role: str,
-                 style: HandleStyle = None):
+                 style: HandleStyle = None, cursor: Qt.CursorShape = None):
         super().__init__(parent)
 
         self.role = role
@@ -16,8 +26,15 @@ class Handle(QGraphicsItem):
         self._half = self.style.base_size / 2.0
         self._pen_width = self.style.border_width
 
+        if cursor is None :
+            cursor_style = ROLE_CURSORS.get(role, self.style.cursor)
+            self.setCursor(cursor_style)
+            if cursor_style is None :
+                self.setCursor(self.style.cursor)
+        else :
+            self.setCursor(cursor)
+
         self.setZValue(self.style.z_value)
-        self.setCursor(self.style.cursor)
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
@@ -25,6 +42,7 @@ class Handle(QGraphicsItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIgnoresParentOpacity, True)
         self.setPos(position)
         self.setVisible(False)
+
 
     # Rendu
     def boundingRect(self) -> QRectF:
@@ -78,6 +96,10 @@ class Handle(QGraphicsItem):
             return
 
         self.prepareGeometryChange()
-        self._half = max((self.style.base_size / zoom_level) / 1.5, self.style.min_size)
-        self._pen_width = max(self.style.border_width / zoom_level, 1.0)
+
+        raw_size = (self.style.base_size / zoom_level) / 1.5
+
+        self._half = max(min(raw_size, self.style.max_size), self.style.min_size)
+
+        self._pen_width = max(min(self.style.border_width / zoom_level, self.style.max_pen_width_size), self.style.min_pen_width_size)
         self.update()

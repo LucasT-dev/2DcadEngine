@@ -11,7 +11,7 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.RectangleElement.Rec
 
 class RectangleElement(ElementObject):
 
-    def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF) -> RectangleResizable:
 
         rect = QRectF(first_point, second_point).normalized()
 
@@ -50,9 +50,10 @@ class RectangleElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> RectangleResizable:
 
         rect = QRectF(first_point, second_point).normalized()
 
@@ -71,6 +72,7 @@ class RectangleElement(ElementObject):
         item.setScale(scale)
 
         item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable)
 
         item.setFlags(flags)
 

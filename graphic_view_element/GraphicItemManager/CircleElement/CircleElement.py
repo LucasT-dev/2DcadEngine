@@ -11,7 +11,7 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle 
 
 class CircleElement(ElementObject):
 
-    def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF) -> CircleResizable :
 
         dx = second_point.x() - first_point.x()
         dy = second_point.y() - first_point.y()
@@ -58,9 +58,10 @@ class CircleElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> CircleResizable :
 
         dx = second_point.x() - first_point.x()
         dy = second_point.y() - first_point.y()
@@ -88,6 +89,7 @@ class CircleElement(ElementObject):
         item.setScale(scale)
 
         item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable)
 
         item.setFlags(flags)
 

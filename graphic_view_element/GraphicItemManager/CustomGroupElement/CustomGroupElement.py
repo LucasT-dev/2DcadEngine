@@ -1,44 +1,49 @@
 import uuid
 
-from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtCore import QPointF, QRectF, Qt
+from PyQt6.QtGui import QBrush, QColor, QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsItem
-from PyQt6.QtGui import QPen, QColor, QTransform
 
-from libs.cadengine.graphic_view_element.GraphicItemManager.BezierCubiqueLineElement.BezierCubeLineResizable import \
-    BezierCubeLineResizable
+from libs.cadengine.graphic_view_element.GraphicItemManager.CustomGroupElement.CustomGroupResizable import \
+    CustomGroupResizable
 from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from libs.cadengine.graphic_view_element.GraphicItemManager.GroupElement.GroupResizable import GroupResizable
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
 
-class BezierCubeLineElement(ElementObject):
+class GroupElement(ElementObject):
 
-    def create_graphics_item(self, points: list[QPointF]) -> BezierCubeLineResizable:
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF, items:[]=None) -> CustomGroupResizable :
+        rect = QRectF(first_point, second_point).normalized()
 
         pen = QPen(QColor(self.get_style().get_border_color()))
         pen.setWidth(self.get_style().get_border_width())
         pen.setStyle(self.get_style().get_border_style())
 
-        item = BezierCubeLineResizable(points)
-        item.setPen(pen)
-        item.setZValue(self.get_style().get_z_value())
+        brush = QBrush(QColor(self.get_style().get_fill_color()))
 
-        item.set_snap_enable(True)
+        item = GroupResizable(rect, items=items)
+        item.setPen(pen)
+        item.setBrush(brush)
+        item.setZValue(self.get_style().get_z_value())
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
         )
 
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
+
         item.setData(self.get_style().get_key(), self.get_style().get_value())
+
+        item.setAcceptHoverEvents(True)
 
         return item
 
     @staticmethod
-    def create_custom_graphics_item(points: list[QPointF],
-                                    border_color: QColor,
-                                    controls: list[list[QPointF]] | None = None,
-                                    border_style: Qt.PenStyle = Qt.PenStyle.SolidLine,
-                                    border_width: int = 0,
+    def create_custom_graphics_item(first_point: QPointF, second_point: QPointF,
+                                    border_color: QColor, border_width: int,
+                                    border_style: Qt.PenStyle, fill_color: QColor,
                                     z_value: int = 0,
                                     key: int = 0,
                                     value: str = uuid.uuid4(),
@@ -49,15 +54,26 @@ class BezierCubeLineElement(ElementObject):
                                     is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> BezierCubeLineResizable:
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
+                                    items=None) -> CustomGroupResizable :
 
-        pen = QPen(QColor(border_color))
+        if items is None:
+            items = []
+        rect = QRectF(first_point, second_point).normalized()
+
+        pen = QPen(border_color)
         pen.setWidth(border_width)
         pen.setStyle(border_style)
 
-        item = BezierCubeLineResizable(points, controls)
+        brush = QBrush(fill_color)
+
+        item = GroupResizable(rect, items)
         item.setPen(pen)
+        item.setBrush(brush)
         item.setZValue(z_value)
+        item.setTransform(transform)
+        item.setVisible(visibility)
+        item.setScale(scale)
 
         item.set_handle_style(handle_style)
         item.set_item_can_be_resizable(is_resizable)
@@ -66,4 +82,8 @@ class BezierCubeLineElement(ElementObject):
 
         item.setData(key, value)
 
+        for child in items:
+            item.add_to_group(child)
+
         return item
+

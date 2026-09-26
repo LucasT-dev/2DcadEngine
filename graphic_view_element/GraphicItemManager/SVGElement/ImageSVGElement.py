@@ -13,7 +13,7 @@ from libs.cadengine.graphic_view_element.GraphicItemManager.GraphicElementObject
 
 class ImageSVGElement(ElementObject):
 
-    def create_graphics_item(self, first_point: QPointF, second_point: QPointF):
+    def create_graphics_item(self, first_point: QPointF, second_point: QPointF) -> ImageSVGResizable:
 
         current_dir = Path(__file__).parent
         image_path = str(current_dir.parents[2] / "image" / "image_icon.svg")
@@ -71,9 +71,10 @@ class ImageSVGElement(ElementObject):
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable):
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> ImageSVGResizable:
 
         svg_item = ImageSVGResizable(image_source)
 
@@ -89,5 +90,6 @@ class ImageSVGElement(ElementObject):
         svg_item.setData(key, value)
 
         svg_item.set_handle_style(handle_style)
+        svg_item.set_item_can_be_resizable(is_resizable)
 
         return svg_item
