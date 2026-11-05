@@ -5,7 +5,7 @@ from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QApplication
 
-from src.MainCad import MainCad
+from scene.MainCad import MainCad
 from src.graphic_view_element.GraphicItemManager.CircleElement.CircleElement import CircleElement
 from src.graphic_view_element.GraphicItemManager.CircleElement.CirclePreview import CirclePreview
 from src.graphic_view_element.GraphicItemManager.CircleElement.CircleResizable import CircleResizable

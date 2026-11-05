@@ -31,7 +31,7 @@ from src.graphic_view_element.GraphicItemManager.SquareElement.SquareResizable i
 from src.graphic_view_element.GraphicItemManager.TextElement.TextElement import TextElement
 from src.graphic_view_element.GraphicItemManager.TextElement.TextPreview import TextPreview
 from src.graphic_view_element.GraphicItemManager.TextElement.TextResizable import TextResizable
-from src.MainCad import MainCad
+from scene.MainCad import MainCad
 
 """
 Todo list :

@@ -1,4 +1,4 @@
-from MainCad import MainCad
+from scene.MainCad import MainCad
 from scene.GraphicScene import GraphicScene
 from scene.GraphicView import GraphicView
 
