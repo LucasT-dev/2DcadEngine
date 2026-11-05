@@ -25,8 +25,6 @@ from src.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
 from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
 from src.graphic_view_element.style.StyleElement import StyleElement
 
-__all__ = ["GraphicView", "GraphicScene"]
-__version__ = "0.1.0"
 
 class GraphicViewContainer(QWidget):
     def __init__(self, scene: QGraphicsScene, show_ruler=False, ruler_positions=None, parent=None):
