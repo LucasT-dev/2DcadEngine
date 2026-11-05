@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QPointF
 from PyQt6.QtWidgets import QGraphicsPixmapItem, QGraphicsItem
 
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapIconManager import SnapIconManager
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapIconManager import SnapIconManager
 
 
 class SnapIndicator(QGraphicsPixmapItem):

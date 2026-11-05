@@ -4,7 +4,7 @@ from PyQt6.QtGui import QPixmap, QTransform
 from PyQt6.QtWidgets import QGraphicsPixmapItem
 from PyQt6.QtCore import QRectF, Qt
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
+from graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
 
 current_dir = Path(__file__).parent
 image_path = str(current_dir.parents[2] / "image" / "default.png")

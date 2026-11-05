@@ -6,9 +6,9 @@ from PyQt6.QtCore import Qt, QPointF, QIODevice, QBuffer
 from PyQt6.QtGui import QPen, QBrush, QColor, QTransform, QFont, QPixmap
 from PyQt6.QtWidgets import QGraphicsItem
 
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 def get_data(item):

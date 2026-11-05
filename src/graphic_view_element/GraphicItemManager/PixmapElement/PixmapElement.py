@@ -6,9 +6,9 @@ from PyQt6.QtGui import QPixmap, QTransform
 from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtWidgets import QGraphicsItem, QLabel
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
-from src.graphic_view_element.GraphicItemManager.Handles.HandleStyle import DEFAULT_STYLE, HandleStyle
-from src.graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
+from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from graphic_view_element.GraphicItemManager.Handles.HandleStyle import DEFAULT_STYLE, HandleStyle
+from graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
 
 
 class PixmapElement(ElementObject):

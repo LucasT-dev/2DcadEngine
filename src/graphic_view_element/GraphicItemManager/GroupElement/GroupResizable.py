@@ -3,10 +3,10 @@ from PyQt6.QtGui import QTransform
 from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphicsItem, QGraphicsEllipseItem, \
     QGraphicsLineItem, QGraphicsTextItem
 
-from src.adapter import AdpaterItem
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from adapter import AdpaterItem
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
@@ -156,9 +156,9 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         est exprimé dans le même repère que rect() du groupe (coordonnées
         locales, donc identique au repère parent des items enfants).
         """
-        from src.graphic_view_element.GraphicItemManager.SquareElement.SquareResizable import SquareResizable
-        from src.graphic_view_element.GraphicItemManager.CircleElement.CircleResizable import CircleResizable
-        from src.graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
+        from graphic_view_element.GraphicItemManager.SquareElement.SquareResizable import SquareResizable
+        from graphic_view_element.GraphicItemManager.CircleElement.CircleResizable import CircleResizable
+        from graphic_view_element.GraphicItemManager.PixmapElement.PixmapResizable import PixmapResizable
 
         def scaled_point(p: QPointF) -> QPointF:
             return QPointF(
@@ -313,7 +313,7 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
         self._old_geometry = self.get_item_geometry
 
     def save_history_geometry(self):
-        from src.draw.HistoryManager import ModifyItemCommand
+        from draw.HistoryManager import ModifyItemCommand
         new_group = self.get_item_geometry
 
         if self._old_geometry != new_group:
@@ -396,7 +396,7 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
     @classmethod
     def from_dict(cls, data: dict):
 
-        from src.graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
+        from graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
 
         item_data = data["data"]
         transform = AdpaterItem.dict_to_transform(data=item_data["transform"])

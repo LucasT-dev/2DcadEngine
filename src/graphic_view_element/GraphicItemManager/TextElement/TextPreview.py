@@ -2,7 +2,7 @@ from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QTransform
 from PyQt6.QtWidgets import QGraphicsTextItem
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
+from graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
 
 
 class TextPreview(PreviewObject):

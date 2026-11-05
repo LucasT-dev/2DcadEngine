@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt, QPointF, QPoint
 from PyQt6.QtGui import QTransform
 from PyQt6.QtWidgets import QGraphicsView
 
-from src.adapter import ScreenConverter
+from adapter import ScreenConverter
 
 
 @dataclass

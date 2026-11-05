@@ -2,11 +2,11 @@ from PyQt6.QtCore import QRectF, QPointF, QTimer
 from PyQt6.QtGui import QBrush, QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsSceneMouseEvent, QGraphicsItem, QGraphicsEllipseItem
 
-from src.adapter import AdpaterItem
-from src.draw.HistoryManager import ModifyItemCommand
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from adapter import AdpaterItem
+from draw.HistoryManager import ModifyItemCommand
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class CircleResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
@@ -266,7 +266,7 @@ class CircleResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
     @classmethod
     def from_dict(cls, data: dict):
 
-        from src.graphic_view_element.GraphicItemManager.CircleElement.CircleElement import CircleElement
+        from graphic_view_element.GraphicItemManager.CircleElement.CircleElement import CircleElement
 
         geometry = data["geometry"]
         pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])

@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QRectF, QPointF
 from PyQt6.QtWidgets import QGraphicsEllipseItem
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
+from graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
 
 
 class EllipsePreview(PreviewObject):

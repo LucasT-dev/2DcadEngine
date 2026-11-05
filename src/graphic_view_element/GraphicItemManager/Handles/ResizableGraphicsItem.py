@@ -3,11 +3,11 @@ import math
 from PyQt6.QtCore import QPointF, QLineF, Qt
 from PyQt6.QtWidgets import QGraphicsPathItem
 
-from src.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapIndicator import SnapIndicator
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapCandidate, SnapType
-from src.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
+from graphic_view_element.GraphicItemManager.Handles.Handle import Handle
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapIndicator import SnapIndicator
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapCandidate, SnapType
+from graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
 POINT_SNAP_RADIUS_RATIO = 0.3
 NEAR_PARALLEL_THRESHOLD_DEG = 3.0
@@ -96,7 +96,7 @@ class ResizableGraphicsItem:
         Pousse UNE SEULE commande pour tout le groupe si un déplacement de
         groupe était en cours, sinon retombe sur le suivi individuel existant.
         """
-        from src.draw.HistoryManager import MoveItemsCommand
+        from draw.HistoryManager import MoveItemsCommand
 
         if self._group_old_positions:
             changed = {

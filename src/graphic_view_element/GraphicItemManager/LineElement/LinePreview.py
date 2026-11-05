@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QPointF
 from PyQt6.QtWidgets import QGraphicsLineItem
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
+from graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
 
 
 class LinePreview(PreviewObject):

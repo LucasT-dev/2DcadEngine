@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from PyQt6.QtCore import QPointF
 
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 @dataclass

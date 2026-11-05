@@ -2,8 +2,8 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QUndoStack
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
-from src.scene.GraphicScene import GraphicScene
-from src.scene.GraphicView import GraphicViewContainer
+from scene.GraphicScene import GraphicScene
+from scene.GraphicView import GraphicViewContainer
 
 
 class MainCad(QWidget):

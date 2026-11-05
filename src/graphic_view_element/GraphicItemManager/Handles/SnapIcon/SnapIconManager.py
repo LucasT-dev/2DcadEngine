@@ -4,7 +4,7 @@ from PyQt6.QtCore import QRectF, Qt
 from PyQt6.QtGui import QPixmap, QPainter
 from PyQt6.QtSvg import QSvgRenderer
 
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class SnapIconManager:

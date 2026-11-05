@@ -2,11 +2,11 @@ from PyQt6.QtCore import QRectF, QPointF, QLineF
 from PyQt6.QtGui import QPen, QBrush, QTransform
 from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphicsItem
 
-from src.adapter import AdpaterItem
-from src.draw.HistoryManager import ModifyItemCommand
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from adapter import AdpaterItem
+from draw.HistoryManager import ModifyItemCommand
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class RectangleResizable(ResizableGraphicsItem, QGraphicsRectItem):
@@ -259,7 +259,7 @@ class RectangleResizable(ResizableGraphicsItem, QGraphicsRectItem):
     @classmethod
     def from_dict(cls, data: dict):
         print("rect from dict")
-        from src.graphic_view_element.GraphicItemManager.RectangleElement.RectangleElement import RectangleElement
+        from graphic_view_element.GraphicItemManager.RectangleElement.RectangleElement import RectangleElement
 
         pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])
         brush: QBrush = AdpaterItem.dict_to_brush(data=data["brush"])

@@ -3,11 +3,11 @@ from PyQt6.QtGui import QTransform
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 from PyQt6.QtWidgets import QGraphicsItem, QGraphicsSceneMouseEvent
 
-from src.adapter import AdpaterItem
-from src.draw.HistoryManager import ModifyItemCommand
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from adapter import AdpaterItem
+from draw.HistoryManager import ModifyItemCommand
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
@@ -298,7 +298,7 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
     @classmethod
     def from_dict(cls, data: dict):
 
-        from src.graphic_view_element.GraphicItemManager.SVGElement.ImageSVGElement import ImageSVGElement
+        from graphic_view_element.GraphicItemManager.SVGElement.ImageSVGElement import ImageSVGElement
 
         item_data = data["data"]
         transform = AdpaterItem.dict_to_transform(data=item_data["transform"])

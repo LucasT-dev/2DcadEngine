@@ -2,11 +2,11 @@ from PyQt6.QtCore import QPointF, QLineF
 from PyQt6.QtGui import QPen, QTransform, QPainterPath
 from PyQt6.QtWidgets import QGraphicsPathItem, QGraphicsSceneMouseEvent, QGraphicsItem
 
-from src.adapter import AdpaterItem
-from src.draw.HistoryManager import ModifyItemCommand
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from adapter import AdpaterItem
+from draw.HistoryManager import ModifyItemCommand
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
@@ -213,7 +213,7 @@ class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
     @classmethod
     def from_dict(cls, data: dict):
-        from src.graphic_view_element.GraphicItemManager.PathLineElement.PathLineElement import PathLineElement
+        from graphic_view_element.GraphicItemManager.PathLineElement.PathLineElement import PathLineElement
 
         pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])
         item_data = data["data"]

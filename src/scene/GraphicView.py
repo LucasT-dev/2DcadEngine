@@ -7,23 +7,23 @@ from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
     QGraphicsTextItem
 
-from src.draw.CameraManager import Camera
-from src.draw.AnnotationManager import AnnotationManager
-from src.draw.GridManager import Grid
-from src.draw.HistoryManager import ModifyItemPropertiesCommand, GroupItemsCommand, \
+from draw.CameraManager import Camera
+from draw.AnnotationManager import AnnotationManager
+from draw.ExportSceneManager import ExportSceneManager
+from draw.GridManager import Grid
+from draw.HistoryManager import ModifyItemPropertiesCommand, GroupItemsCommand, \
     UngroupItemsCommand, AddItemCommand, RemoveItemsCommand
-from src.draw.ExportSceneManager import ExportSceneManager
-from src.draw.MouseTracker import MouseTracker
-from src.draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
-from src.exception.GraphicElementExceptions import ElementNotRegisteredError, ElementCreationError, \
+from draw.MouseTracker import MouseTracker
+from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
+from exception.GraphicElementExceptions import ElementNotRegisteredError, ElementCreationError, \
     GraphicElementError
-from src.graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject, ElementObject, \
+from graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
+from graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject, ElementObject, \
     PreviewObject
-from src.graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
-from src.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.style.StyleElement import StyleElement
+from graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
+from graphic_view_element.GraphicItemManager.Handles.Handle import Handle
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.style.StyleElement import StyleElement
 
 
 class GraphicViewContainer(QWidget):
@@ -720,7 +720,7 @@ class GraphicView(QGraphicsView):
 
     def _is_handle_under_cursor(self, view_pos) -> bool:
         """Vérifie si un Handle est sous le curseur."""
-        from src.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
+        from graphic_view_element.GraphicItemManager.Handles.Handle import Handle
         scene_pos = self.mapToScene(view_pos)
         for item in self.scene().items(scene_pos):
             if isinstance(item, Handle):

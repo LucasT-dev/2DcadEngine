@@ -4,7 +4,7 @@ from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsPixmapItem, QGraphicsTextItem, \
     QGraphicsLineItem, QGraphicsItem, QGraphicsPathItem
 
-from src.graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
+from graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
 
 
 class AddItemCommand(QUndoCommand):

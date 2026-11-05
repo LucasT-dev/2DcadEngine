@@ -4,11 +4,11 @@ from PyQt6.QtCore import QPointF, QRectF, Qt
 from PyQt6.QtGui import QBrush, QColor, QPen, QTransform
 from PyQt6.QtWidgets import QGraphicsItem
 
-from src.graphic_view_element.GraphicItemManager.CustomGroupElement.CustomGroupResizable import \
+from graphic_view_element.GraphicItemManager.CustomGroupElement.CustomGroupResizable import \
     CustomGroupResizable
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
-from src.graphic_view_element.GraphicItemManager.GroupElement.GroupResizable import GroupResizable
-from src.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
+from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from graphic_view_element.GraphicItemManager.GroupElement.GroupResizable import GroupResizable
+from graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
 
 class GroupElement(ElementObject):

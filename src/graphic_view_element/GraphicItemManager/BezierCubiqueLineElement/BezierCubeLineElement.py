@@ -4,10 +4,10 @@ from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtGui import QPen, QColor, QTransform
 
-from src.graphic_view_element.GraphicItemManager.BezierCubiqueLineElement.BezierCubeLineResizable import \
+from graphic_view_element.GraphicItemManager.BezierCubiqueLineElement.BezierCubeLineResizable import \
     BezierCubeLineResizable
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
-from src.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
+from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
 
 class BezierCubeLineElement(ElementObject):

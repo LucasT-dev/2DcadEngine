@@ -1,9 +1,9 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCursor
 
-from src.exception.GraphicElementExceptions import ElementAlreadyRegisteredError, ElementNotRegisteredError, \
+from exception.GraphicElementExceptions import ElementAlreadyRegisteredError, ElementNotRegisteredError, \
     ElementCreationError
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject
+from graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject
 
 
 class GraphicElementManager:

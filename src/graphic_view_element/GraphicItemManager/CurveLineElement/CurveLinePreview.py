@@ -1,8 +1,8 @@
 from PyQt6.QtCore import QPointF
 from PyQt6.QtWidgets import QGraphicsPathItem
 
-from src.graphic_view_element.GraphicItemManager.CurveLineElement import CurveLineResizable
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import MultiPointPreviewObject
+from graphic_view_element.GraphicItemManager.CurveLineElement import CurveLineResizable
+from graphic_view_element.GraphicItemManager.GraphicElementObject import MultiPointPreviewObject
 
 
 class CurveLinePreview(MultiPointPreviewObject):

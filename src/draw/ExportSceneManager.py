@@ -6,8 +6,8 @@ from PyQt6.QtGui import QPainter, QImage, QPageLayout, QPageSize, QColor, QBrush
 from PyQt6.QtPrintSupport import QPrinter
 from PyQt6.QtSvg import QSvgGenerator
 
-from src.exception.ImportExportExceptions import ExportError
-from src.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
+from exception.ImportExportExceptions import ExportError
+from graphic_view_element.GraphicItemManager.Handles.Handle import Handle
 
 
 def _is_background_light(background: Qt.GlobalColor | QColor, luminance_threshold: float = 0.6) -> bool:

@@ -2,11 +2,11 @@ from PyQt6.QtCore import QRectF, QPointF, QTimer, QLineF
 from PyQt6.QtGui import QPen, QBrush, QTransform
 from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphicsItem
 
-from src.adapter import AdpaterItem
-from src.draw.HistoryManager import ModifyItemCommand
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
-from src.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
+from adapter import AdpaterItem
+from draw.HistoryManager import ModifyItemCommand
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class SquareResizable(ResizableGraphicsItem, QGraphicsRectItem):
@@ -284,7 +284,7 @@ class SquareResizable(ResizableGraphicsItem, QGraphicsRectItem):
     @classmethod
     def from_dict(cls, data: dict):
 
-        from src.graphic_view_element.GraphicItemManager.SquareElement.SquareElement import SquareElement
+        from graphic_view_element.GraphicItemManager.SquareElement.SquareElement import SquareElement
 
         geometry = data["geometry"]
         pen: QPen = AdpaterItem.dict_to_pen(data=data["pen"])

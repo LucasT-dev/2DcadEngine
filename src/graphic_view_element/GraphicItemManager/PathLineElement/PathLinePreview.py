@@ -2,7 +2,7 @@ from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QPainterPath
 from PyQt6.QtWidgets import QGraphicsPathItem
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject, \
+from graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject, \
     MultiPointPreviewObject
 
 

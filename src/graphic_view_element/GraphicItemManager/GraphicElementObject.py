@@ -5,8 +5,8 @@ from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QGraphicsItem
 from abc import ABC, abstractmethod
 
-from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
-from src.graphic_view_element.style.StyleElement import StyleElement
+from graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from graphic_view_element.style.StyleElement import StyleElement
 
 
 class ElementObject:

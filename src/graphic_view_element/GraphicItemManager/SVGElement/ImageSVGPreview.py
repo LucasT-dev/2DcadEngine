@@ -4,7 +4,7 @@ from PyQt6.QtGui import QTransform, QPolygonF
 from PyQt6.QtSvgWidgets import QGraphicsSvgItem
 from PyQt6.QtCore import QRectF, QPointF
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
+from graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
 
 current_dir = Path(__file__).parent
 image_path = str(current_dir.parents[2] / "image" / "image_icon.svg")

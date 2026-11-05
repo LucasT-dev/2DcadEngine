@@ -4,9 +4,9 @@ from PyQt6.QtCore import QPointF, QRectF
 from PyQt6.QtGui import QTransform, QColor, QFont
 from PyQt6.QtWidgets import QGraphicsItem
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
-from src.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
-from src.graphic_view_element.GraphicItemManager.TextElement.TextResizable import TextResizable
+from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
+from graphic_view_element.GraphicItemManager.TextElement.TextResizable import TextResizable
 
 
 class TextElement(ElementObject):

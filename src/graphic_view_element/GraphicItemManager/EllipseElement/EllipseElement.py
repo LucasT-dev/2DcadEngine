@@ -4,9 +4,9 @@ from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtCore import QRectF, QPointF, Qt
 from PyQt6.QtGui import QPen, QColor, QBrush, QTransform
 
-from src.graphic_view_element.GraphicItemManager.EllipseElement.EllipseResizable import EllipseResizable
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
-from src.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
+from graphic_view_element.GraphicItemManager.EllipseElement.EllipseResizable import EllipseResizable
+from graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
 
 
 class EllipseElement(ElementObject):

@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QRectF
 from PyQt6.QtWidgets import QGraphicsRectItem
 
-from src.graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
+from graphic_view_element.GraphicItemManager.GraphicElementObject import PreviewObject
 
 
 class GroupPreview(PreviewObject):
