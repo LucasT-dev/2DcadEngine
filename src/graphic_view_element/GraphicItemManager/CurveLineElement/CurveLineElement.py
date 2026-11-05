@@ -1,0 +1,67 @@
+import uuid
+
+from PyQt6.QtCore import QPointF, Qt
+from PyQt6.QtWidgets import QGraphicsItem
+from PyQt6.QtGui import QPen, QColor, QTransform
+
+from src.graphic_view_element.GraphicItemManager.CurveLineElement.CurveLineResizable import \
+    CurveLineResizable
+from src.graphic_view_element.GraphicItemManager.GraphicElementObject import ElementObject
+from src.graphic_view_element.GraphicItemManager.Handles.HandleStyle import HandleStyle, DEFAULT_STYLE
+
+
+class CurveLineElement(ElementObject):
+
+    def create_graphics_item(self, points: list[QPointF]) -> CurveLineResizable :
+
+        pen = QPen(QColor(self.get_style().get_border_color()))
+        pen.setWidth(self.get_style().get_border_width())
+        pen.setStyle(self.get_style().get_border_style())
+
+        item = CurveLineResizable(points)
+        item.setPen(pen)
+        item.setZValue(self.get_style().get_z_value())
+
+        item.set_snap_enable(True)
+
+        item.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable
+        )
+
+        item.setData(self.get_style().get_key(), self.get_style().get_value())
+
+        return item
+
+    @staticmethod
+    def create_custom_graphics_item(points: list[QPointF],
+                                    border_color: QColor, border_width: int,
+                                    border_style: Qt.PenStyle,
+                                    z_value: int = 0,
+                                    key: int = 0,
+                                    value: str = uuid.uuid4(),
+                                    transform: QTransform = QTransform(),
+                                    visibility: bool = True,
+                                    scale: float = 1.0,
+                                    handle_style: HandleStyle = DEFAULT_STYLE,
+                                    is_resizable: bool = True,
+                                    flags: QGraphicsItem.GraphicsItemFlag =
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+                                    QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> CurveLineResizable :
+
+        pen = QPen(QColor(border_color))
+        pen.setWidth(border_width)
+        pen.setStyle(border_style)
+
+        item = CurveLineResizable(points)
+        item.setPen(pen)
+        item.setZValue(z_value)
+
+        item.set_handle_style(handle_style)
+        item.set_item_can_be_resizable(is_resizable)
+
+        item.setFlags(flags)
+
+        item.setData(key, value)
+
+        return item

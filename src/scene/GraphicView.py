@@ -1,0 +1,1083 @@
+import importlib
+
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF
+from PyQt6.QtGui import QPainter, QBrush, QColor, QFont, QCursor, QKeySequence, QAction, QPixmap, QPageSize, \
+    QPageLayout, QTransform
+from PyQt6.QtPrintSupport import QPrinter
+from PyQt6.QtWidgets import QGraphicsView, QWidget, QGridLayout, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, \
+    QGraphicsTextItem
+
+from src.draw.CameraManager import Camera
+from src.draw.AnnotationManager import AnnotationManager
+from src.draw.GridManager import Grid
+from src.draw.HistoryManager import ModifyItemPropertiesCommand, GroupItemsCommand, \
+    UngroupItemsCommand, AddItemCommand, RemoveItemsCommand
+from src.draw.ExportSceneManager import ExportSceneManager
+from src.draw.MouseTracker import MouseTracker
+from src.draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
+from src.exception.GraphicElementExceptions import ElementNotRegisteredError, ElementCreationError, \
+    GraphicElementError
+from src.graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
+from src.graphic_view_element.GraphicItemManager.GraphicElementObject import GraphicElementObject, ElementObject, \
+    PreviewObject
+from src.graphic_view_element.GraphicItemManager.GroupElement.GroupElement import GroupElement
+from src.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
+from src.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from src.graphic_view_element.style.StyleElement import StyleElement
+
+
+class GraphicViewContainer(QWidget):
+    def __init__(self, scene: QGraphicsScene, show_ruler=False, ruler_positions=None, parent=None):
+        super().__init__(parent)
+
+        self.view = GraphicView(scene)
+        self.show_ruler = show_ruler
+
+        # Définir les positions par défaut si non spécifiées
+        self.ruler_positions = ruler_positions or {
+            "horizontal": "top",    # "top" ou "bottom"
+            "vertical": "left"      # "left" ou "right"
+        }
+
+        self.layout = QGridLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+
+        self.h_ruler = None
+        self.v_ruler = None
+        self.rule_corner = None
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        if self.show_ruler:
+            self.h_ruler = HorizontalRuler(self.view)
+            self.v_ruler = VerticalRuler(self.view)
+            self.rule_corner = CornerRuler(self.view)
+
+            # Index du coin vide
+            corner_row = 0 if self.ruler_positions["horizontal"] == "top" else 2
+            corner_col = 0 if self.ruler_positions["vertical"] == "left" else 2
+
+            # Position horizontale
+            if self.ruler_positions["horizontal"] == "top":
+                self.layout.addWidget(self.h_ruler, 0, 1)
+            elif self.ruler_positions["horizontal"] == "bottom":
+                self.layout.addWidget(self.h_ruler, 2, 1)
+
+            # Position verticale
+            if self.ruler_positions["vertical"] == "left":
+                self.layout.addWidget(self.v_ruler, 1, 0)
+            elif self.ruler_positions["vertical"] == "right":
+                self.layout.addWidget(self.v_ruler, 1, 2)
+
+            # Ajouter la vue graphique au centre
+            self.layout.addWidget(self.view, 1, 1)
+
+            # Ajouter le coin vide
+            self.layout.addWidget(self.rule_corner, corner_row, corner_col)
+
+            self.view.rulers = {"h": self.h_ruler, "v": self.v_ruler}
+
+        else:
+            self.layout.addWidget(self.view, 0, 0)
+
+        self.layout.setColumnStretch(1, 1)
+        self.layout.setRowStretch(1, 1)
+        self.setLayout(self.layout)
+
+    def set_ruler_position(self, horizontal: str = None, vertical: str = None):
+        """Change dynamiquement la position des règles (top/bottom et left/right)."""
+        if horizontal in ("top", "bottom"):
+            self.ruler_positions["horizontal"] = horizontal
+
+        if vertical in ("left", "right"):
+            self.ruler_positions["vertical"] = vertical
+
+        # Supprimer les anciens widgets de la grille
+        for i in reversed(range(self.layout.count())):
+            widget = self.layout.itemAt(i).widget()
+            if widget:
+                self.layout.removeWidget(widget)
+                widget.setParent(None)
+
+        # Réinitialiser l'interface avec les nouvelles positions
+        self._setup_ui()
+
+
+class GraphicView(QGraphicsView):
+
+    # Custom event signal
+    tool_changed = pyqtSignal(str)
+    selection_changed = pyqtSignal(list)
+    zoom_changed = pyqtSignal(float)
+    key_press_event = pyqtSignal(int)
+
+    def __init__(self, scene, parent=None):
+        super().__init__(scene, parent)
+
+
+        self.first_point = None
+        self._drawing = True
+
+        # Composants métiers
+        self.grid = Grid(self)
+        self.camera = Camera(self)
+        self.annotation_manager = AnnotationManager(self)
+
+        # Event
+        self.mouse_tracker = MouseTracker(self)
+
+        # Element style
+        self.style_element = StyleElement()
+
+        # Element manager - Gestion des elements, preview, serialisation, resize
+        self.element_manager = GraphicElementManager()
+
+        # Gestion des import/export de la scene
+        self.export_manager = ExportSceneManager(self)
+
+        self.scene().selectionChanged.connect(self.emit_selection_changed)
+
+
+        # Configuration de base de la vue
+        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+
+        # variable pour les imports dynamiques
+        self._pending_placement_item: QGraphicsItem | None = None
+        self._pending_placement_offset: QPointF = QPointF(0, 0)
+
+
+    def g_set_render_hit(self, render: QPainter.RenderHint):
+        self.setRenderHint(render)
+
+    def g_set_background_color(self, hex_color: str):
+        self.setBackgroundBrush(QBrush(QColor(hex_color)))
+
+    def g_set_scale(self, sx, sy):
+        self.scale(sx, sy)
+
+    def g_get_scale(self):
+        transform = self.transform()
+        return transform.m11(), transform.m22()
+
+    def g_set_scene_rectangle(self, ax: float=-1000, ay: float=-1000, aw: float=2000, ah: float=2000):
+        self.setSceneRect(ax, ay, aw, ah)
+
+    def g_center_camera_on(self, pos_x: int, pos_y: int):
+        self.centerOn(pos_x, pos_y)
+
+
+    # --------------------start text annotation --------------------
+
+    def g_add_text_annotation(self, id_: str, text: str, x: int, y: int, font: QFont, style):
+        self.annotation_manager.add_label(id_, text, x, y, font=font, style=style)
+
+    def g_update_text_annotation(self, id_: str, new_text: str):
+        self.annotation_manager.update_text(id_, new_text)
+
+    def g_remove_annotation(self, id_: str):
+        self.annotation_manager.remove_label(id_)
+
+    # -------------------- end text annotation ---------------------
+
+    # -------------------- start scene unit ------------------------
+
+    def g_set_unit(self, unit: str):
+        if unit not in ("px", "mm", "cm"):
+            raise ValueError("Unit must be 'px', 'mm' or 'cm'")
+
+        if hasattr(self, 'rulers'):
+            self.rulers["h"].unit = unit
+            self.rulers["v"].unit = unit
+
+            self._update_rulers()
+
+    # -------------------- end scene unit --------------------------
+
+
+    # -------------------- start style method ------------------
+
+    def g_set_default_fill_color(self, color: QColor):
+        self.style_element.set_fill_color(color)
+
+    def g_set_default_border_color(self, color: QColor):
+        self.style_element.set_border_color(color)
+
+    def g_set_default_border_width(self, width: int):
+        self.style_element.set_border_width(width)
+
+    def g_set_default_border_style(self, border_style: Qt.PenStyle):
+        self.style_element.set_border_style(border_style)
+
+    def g_set_default_text(self, text: str):
+        self.style_element.set_text(text)
+
+    def g_set_default_text_color(self, color: QColor):
+        self.style_element.set_text_color(color)
+
+    def g_set_default_text_font(self, font: QFont):
+        self.style_element.set_font(font)
+
+    def g_set_default_key(self, key: int):
+        self.style_element.set_key(key)
+
+    def g_set_default_value(self, value):
+        self.style_element.set_value(value)
+
+
+
+    def g_set_tool(self, tool: str):
+        print("g_set_too : " + tool)
+        self._cancel_drawing()
+        self.style_element.set_tool(tool)
+
+        self.emit_tool_changed(tool)
+        self._update_selection_mode(tool)
+
+    def g_get_tool(self) -> str:
+        return self.style_element.get_tool()
+
+    # -------------------- end style method --------------------
+
+
+    # -------------------- start item method --------------
+
+    def g_get_items_selected(self) -> list[QGraphicsItem]:
+        return self.scene().selectedItems()
+
+    def g_get_items(self) -> list[QGraphicsItem]:
+        return self.scene().items()
+
+    def g_get_item_by_data(self, key: int, value) -> QGraphicsItem | None:
+        """Recherche le premier item dont item.data(key) == value"""
+        for item in self.scene().items():
+            if item.data(key) == value:
+                return item
+        return None
+
+    def g_get_items_by_data(self, key: int, value) -> list[QGraphicsItem]:
+        return [item for item in self.scene().items() if item.data(key) == value]
+
+
+    def g_change_fill_color_items_selected(self, fill_color: QColor):
+        for item in self.g_get_items_selected():
+            if hasattr(item, "setBrush"):
+                old_item = item
+
+                item.setBrush(QBrush(fill_color))
+
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
+
+    def g_change_border_color_items_selected(self, border_color: QColor):
+        for item in self.g_get_items_selected():
+            if hasattr(item, "setPen"):
+                old_item = item
+                pen = item.pen()
+                pen.setColor(border_color)
+                item.setPen(pen)
+
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
+
+    def g_change_border_width_items_selected(self, width: int):
+        for item in self.g_get_items_selected():
+            if hasattr(item, "setPen"):
+                old_item = item
+                pen = item.pen()
+                pen.setWidth(width)
+                item.setPen(pen)
+
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
+
+    def g_change_border_style_items_selected(self, style: Qt.PenStyle):
+        for item in self.g_get_items_selected():
+            if hasattr(item, "setPen"):
+                old_item = item
+                pen = item.pen()
+                pen.setStyle(style)
+                item.setPen(pen)
+
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
+
+    def g_change_z_value_items_selected(self, z_value: int | float):
+        for item in self.g_get_items_selected():
+            old_item = item
+            item.setZValue(z_value)
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
+
+    def g_change_image_url_items_selected(self, url: str):
+        for item in self.g_get_items_selected():
+            if isinstance(item, QGraphicsPixmapItem):
+                pixmap = QPixmap(url)
+                if not pixmap.isNull():
+                    old_item = item
+                    item.setPixmap(pixmap)
+
+                    cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                    self.scene().undo_stack.push(cmd)
+                else:
+                    print(f"Failed to load image from URL: {url}")
+
+    def g_up_z_value_items_selected(self):
+        for item in self.g_get_items_selected():
+            old_item = item
+            item.setZValue(item.zValue() + 1)
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
+
+    def g_down_z_value_items_selected(self):
+        for item in self.g_get_items_selected():
+            old_item = item
+            item.setZValue(item.zValue() - 1)
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
+
+    def g_send_items_selected_to_front(self):
+        selected = self.g_get_items_selected()
+        if not selected:
+            return
+
+        # Trouver les objets sélectionnables dans la scène
+        selectable_items = [
+            item for item in self.scene().items()
+            if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+        ]
+
+        # Chercher le zValue max parmi les éléments sélectionnables
+        max_z = max((item.zValue() for item in selectable_items), default=0)
+
+        # Appliquer un zValue plus élevé à chaque sélectionné
+        for i, item in enumerate(selected):
+            old_item = item
+            item.setZValue(max_z + i + 1)  # +i pour garder un ordre relatif
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
+
+    def g_send_items_selected_to_back(self):
+        selected = self.g_get_items_selected()
+        if not selected:
+            return
+
+        # Tous les éléments sélectionnables dans la scène
+        selectable_items = [
+            item for item in self.scene().items()
+            if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsSelectable
+        ]
+
+        # Le plus petit z-value actuel
+        min_z = min((item.zValue() for item in selectable_items), default=0)
+
+        # Appliquer un z-value plus petit à chaque sélectionné
+        for i, item in enumerate(selected):
+            old_item = item
+            item.setZValue(min_z - len(selected) + i - 1)
+
+            cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+            self.scene().undo_stack.push(cmd)
+
+    def g_group_selected_items(self):
+        selected_items = self.g_get_items_selected()
+        if not selected_items:
+            return None
+
+        cmd = GroupItemsCommand(self.scene, selected_items=selected_items)
+        self.scene().undo_stack.push(cmd)
+        return None
+
+    def g_ungroup_selected_items(self):
+        return self.g_ungroup_items(self.g_get_items_selected())
+
+    def g_ungroup_items(self, items):
+
+        selected_items = items
+        if not selected_items:
+            return None
+
+        # On ne prend que le premier groupe sélectionné
+        group = next((it for it in selected_items if isinstance(it, QGraphicsItem)), None)
+        if not group:
+            return None
+
+        cmd = UngroupItemsCommand(self.scene, group)
+        self.scene().undo_stack.push(cmd)
+
+        return None
+
+
+
+    def g_unselect_items(self) :
+        self.scene().clearSelection()
+
+
+    # -------------------- end item method ----------------
+
+
+    # -------------------- start register object preview method-
+
+    def g_add_item(self, name: str, history: bool = True, **kwargs):
+        """Ajoute un élément personnalisé à la scène."""
+
+        try:
+            element = self.element_manager.get_element(name)
+        except ElementNotRegisteredError as e:
+            self._handle_add_item_error(e)
+            return None
+
+        try:
+            item = element.element.create_custom_graphics_item(**kwargs)
+        except Exception as e:
+            self._handle_add_item_error(ElementCreationError(name, e))
+            return None
+
+        if history:
+            cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
+            self.scene().undo_stack.push(cmd)
+        else:
+            self.scene().addItem(item)
+
+        return item
+
+    def g_add_QGraphicitem(self, item: QGraphicsItem, history: bool=True):
+        if history :
+            cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
+            self.scene().undo_stack.push(cmd)
+        else :
+            self.scene().addItem(item)
+
+    # delete selected item by user program
+    def g_remove_selected_item(self):
+
+        for item in self.scene().selectedItems():
+            self.scene().removeItem(item)
+
+    # delete item by user program
+    def g_remove_item(self, item: QGraphicsItem):
+        self.scene().removeItem(item)
+
+    # -------------------- end register object preview method --
+
+
+    # -------------------- start serialize/deserialize method---
+    def g_serialize_item_scene(self) -> list[dict]:
+        return self.g_serialize_items(self.scene().items())
+
+    def g_serialize_items(self, item_list) -> list[dict]:
+        """Parcourt tous les items et sérialise ceux appartenant à un GraphicElementObject."""
+        print("g_serialize_items")
+        if not self.scene():
+            return []
+
+        serialized_items = []
+
+        # Récupère toutes les classes resizable enregistrées
+        resizable_classes = [elem.resizable_class for elem in self.element_manager.get_all_elements()]
+
+        for item in item_list:
+
+            print(f"Item : {item}")
+
+            parent = item.parentItem()
+            print(parent)
+            if parent and any(isinstance(parent, cls) for cls in resizable_classes):
+                print("continue 1")
+                continue  # ne pas enregistrer les enfants (déjà dans le groupe)
+            print("check item est resize ?")
+            # Vérifie si l'item est un Resizable (ou un type enregistré)
+            print(resizable_classes)
+
+            print(len(resizable_classes))
+
+            for cls in resizable_classes:
+                print(f"Cls : {cls} is item {item} = {isinstance(item, cls)}" )
+
+
+            if any(isinstance(item, cls) for cls in resizable_classes):
+                print("Item est un resize")
+
+                # Vérifie que l'item possède bien une méthode to_dict
+                if hasattr(item, "to_dict") and callable(item.to_dict):
+                    print("have dict method")
+                    serialized_items.append(item.to_dict())
+                else:
+                    print(f"[WARN] L'item {item} est resizable mais n'a pas de méthode to_dict()")
+
+        print(f"serialized_items : {serialized_items}")
+        return serialized_items
+
+    def g_deserialize_items(self, data_list: list[dict]) -> list[QGraphicsItem]:
+        """Reconstruit une liste d'items graphiques à partir d'une liste de dictionnaires JSON."""
+        if not data_list:
+            return []
+
+        deserialized_items = []
+
+        for entry in data_list:
+
+            item_type = entry.get("type")
+
+            if not item_type:
+                print(f"[WARN] Entrée JSON sans type : {entry}")
+                continue
+
+            class_path = entry.get("data", {}).get("class")
+            resizable_class = self.resolve_class_from_path(class_path)
+
+            print(f"class_path : {class_path}")
+            print(f"resizable_class : {resizable_class}")
+
+            try:
+                item = resizable_class.from_dict(data=entry)
+
+                print(item)
+
+                if item:
+                    deserialized_items.append(item)
+                else:
+                    print(f"[WARN] from_dict() pour '{item_type}' a retourné None")
+            except Exception as e:
+                print(f"[ERROR] from_dict() failed for '{item_type}': {e}")
+
+        return deserialized_items
+
+    def resolve_class_from_path(self, dotted_path: str):
+        """
+        Convertit une chaîne 'module.submodule.ClassName' en la classe Python correspondante.
+        Lève ImportError / AttributeError si ça échoue.
+        """
+        if not dotted_path or "." not in dotted_path:
+            raise ValueError(f"Chemin de classe invalide : {dotted_path}")
+
+        module_path, class_name = dotted_path.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        cls = getattr(module, class_name)
+        return cls
+
+    def get_export_manager(self):
+        return self.export_manager
+
+
+    def export_scene_to_pdf(self, scene: QGraphicsScene, filename: str, render_rect: QRectF,
+                            format=QPageSize.PageSizeId.A4, orientation=QPageLayout.Orientation.Portrait):
+
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer.setOutputFileName(filename)
+        printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+        printer.setPageSize(QPageSize(format))
+        printer.setPageOrientation(orientation)
+
+        page_rect = printer.pageRect(QPrinter.Unit.DevicePixel)
+        painter = QPainter(printer)
+
+        t = self.transform()
+        flipped_x = t.m11() < 0
+        flipped_y = t.m22() < 0
+
+        # inversion locale pour le PDF
+        fix = QTransform()
+        fix.scale(-1 if flipped_x else 1, -1 if flipped_y else 1)
+
+        fix.translate(
+            -page_rect.width() if flipped_x else 0,
+            -page_rect.height() if flipped_y else 0
+        )
+
+        painter.setWorldTransform(fix)
+
+        scene.render(painter, target=page_rect, source=render_rect)
+        painter.end()
+
+    # -------------------- end serialize/deserialize method ----
+
+
+    # -------------------- start register object view method ---
+
+    def g_register_element(self, element_name: str, element_class: type[ElementObject],
+                           preview_class: type[PreviewObject], resizable_class: ResizableGraphicsItem | None):
+        """Associer une preview à un nom d’outil (Tool ou str)."""
+        # Instancier preview_class avec self.style_element
+        preview_instance = preview_class(style=self.style_element)
+        element_instance = element_class(style=self.style_element)
+
+        self.element_manager.register_element(name=element_name,
+                                              element=GraphicElementObject(name=element_name,
+                                                                            element_class=element_instance,
+                                                                            preview_class=preview_instance,
+                                                                            style=self.style_element)
+                                              .set_resizable_class(resizable_class)
+
+                                              )
+
+    # -------------------- end register object view method -----
+
+
+    # -------------------- start register shortcut tool --------
+
+    def g_register_shortcut(self, name: str, key: Qt.Key):
+        """Associe une touche Qt à un nom d’outil (ex: Qt.Key_L → 'line')"""
+        self.element_manager.add_shortcut(name=name, shortcut=key)
+
+    # -------------------- end register shortcut tool ----------
+
+
+    # -------------------- start register cursor tool --------
+
+    def g_register_cursor(self, name: str, cursor: Qt.CursorShape | QCursor):
+        """Associe un cursor à un nom d’outil"""
+        self.element_manager.add_cursor(name=name, cursor=cursor)
+
+    def g_set_cursor(self, cursor: Qt.CursorShape | QCursor):
+        self.setCursor(cursor)
+
+    # -------------------- end register cursor tool ----------
+
+    # -------------------- start history manager -------------
+
+    def g_set_shortcut_undo_action(self):
+        # Ctrl+Z
+        undo_action = self.scene().undo_stack.createUndoAction(self, "undo")
+        undo_action.setShortcut(QKeySequence.StandardKey.Undo)
+        self.addAction(undo_action)
+
+    def g_set_shortcut_redo_action(self):
+        # Ctrl+Y
+        redo_action = self.scene().undo_stack.createRedoAction(self, "redo")
+        redo_action.setShortcut(QKeySequence.StandardKey.Redo)
+        self.addAction(redo_action)
+
+    def g_undo_action(self):
+        undo_action = self.scene().undo_stack.createUndoAction(self, "undo")
+        self.addAction(undo_action)
+
+    def g_redo_action(self):
+        undo_action = self.scene().undo_stack.createRedoAction(self, "redo")
+        self.addAction(undo_action)
+
+    def g_set_shortcut_delete_item(self):
+        # --- Suppr pour supprimer ---
+        delete_action = QAction("delete", self)
+        delete_action.setShortcut(Qt.Key.Key_Delete)
+        delete_action.triggered.connect(self.delete_selected_items)
+        self.addAction(delete_action)
+
+    def delete_selected_items(self):
+        # Pour tous les items sélectionnés
+        selected = self.scene().selectedItems()
+
+        # Exclut les handles (enfants d'un item, pas des items à supprimer directement)
+        selected = [item for item in selected if not isinstance(item, Handle)]
+
+        if selected:
+            cmd = RemoveItemsCommand(scene=self.scene, items=selected)
+            self.scene().undo_stack.push(cmd)
+        return
+
+    def set_undo_limit(self, limit: int):
+
+        self.scene().undo_stack.setUndoLimit(limit)
+
+    # -------------------- end history manager ---------------
+
+
+    # -------------------- drawing method --------------------
+    def g_set_can_drawing(self, enable_disable: bool):
+        self._drawing = enable_disable
+
+    def g_get_can_drawing(self) -> bool:
+        return self._drawing
+
+    # -------------------- private method --------------------
+
+    def _update_rulers(self):
+        """Mettre à jour les règles si elles existent"""
+        if hasattr(self, 'rulers'):
+            self.rulers["h"].update()
+            self.rulers["v"].update()
+
+    # -------------------- private method --------------------
+
+    def g_get_mouse_state(self):
+        return self.mouse_tracker.get_mouse_state()
+
+    # Gestion d'affichage ou non de la zone de selection en fonction de l'outil
+    def _update_selection_mode(self, tool: str):
+        if tool == "mousse":
+            self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
+        else:
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)
+
+    def _is_handle_under_cursor(self, view_pos) -> bool:
+        """Vérifie si un Handle est sous le curseur."""
+        from src.graphic_view_element.GraphicItemManager.Handles.Handle import Handle
+        scene_pos = self.mapToScene(view_pos)
+        for item in self.scene().items(scene_pos):
+            if isinstance(item, Handle):
+                return True
+        return False
+
+    def _cancel_drawing(self):
+        if self.first_point is None:
+            return
+
+        if self.element_manager.has_preview(self.g_get_tool()):
+            preview = self.element_manager.get_element(self.g_get_tool()).get_preview()
+            item = preview.get_item()
+
+            if item is not None and item.scene() is not None:
+                self.g_remove_item(item)
+
+            preview.reset()
+
+        self.first_point = None
+
+    def _finish_multipoint_drawing(self, preview, last_point: QPointF = None):
+        """
+        Termine un tracé multi-points et crée l'item définitif.
+        'last_point' : point supplémentaire à ajouter avant validation
+        (ex: point du clic droit). None si on valide avec les points déjà présents.
+        """
+        if last_point is not None:
+            preview.add_point(last_point)
+
+        points = preview.finish_points()
+
+        self.g_remove_item(preview.get_item())
+        preview.reset()
+        self.first_point = None
+
+        if len(points) < 2:
+            return  # tracé trop court, on ne crée rien
+
+        item = self.element_manager.get_element(self.g_get_tool()).element.create_graphics_item(points)
+        cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
+
+        self.scene().undo_stack.push(cmd)
+
+
+    # -------------------- EVENT --------------------
+    def wheelEvent(self, event):
+
+        zoom_level = self.transform().m11()
+
+        self.mouse_tracker.process_wheel(event)
+
+        if not self.camera.handle_wheel(event):
+            super().wheelEvent(event)
+
+        # mise a jour des rulers
+        self._update_rulers()
+
+        self._update_all_handles_size(zoom_level)
+
+
+    def _update_all_handles_size(self, zoom_level: float):
+
+        for item in self.g_get_items_selected():
+            if isinstance(item, ResizableGraphicsItem):
+                item.update_handles_size(zoom_level)
+
+    def mousePressEvent(self, event):
+
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.mouse_tracker.process_mouse_press(event)
+            self.camera.handle_mouse_press(event)
+            return
+        self.mouse_tracker.process_mouse_press(event)
+
+        self._update_rulers()
+
+        # Importation d'un item avec placement dynamique
+        if self._pending_placement_item is not None:
+            if event.button() == Qt.MouseButton.LeftButton:
+                self._confirm_item_placement()
+            elif event.button() == Qt.MouseButton.RightButton:
+                self._cancel_item_placement()
+            return
+
+        # Dessin des items
+        if self._drawing:
+            if self.element_manager.has_preview(self.g_get_tool()):
+                preview = self.element_manager.get_element(self.g_get_tool()).get_preview()
+                scene_pos = self.mapToScene(event.pos())
+
+                if preview.is_multi_point:
+
+                    if event.button() == Qt.MouseButton.RightButton:
+                        if self.first_point is not None:
+                            # Clic droit : ajoute le point final et termine le tracé
+                            self._finish_multipoint_drawing(preview, last_point=scene_pos)
+                        return
+
+                    if event.button() == Qt.MouseButton.LeftButton:
+                        if self.first_point is None:
+                            # 1er clic : démarre l'aperçu
+                            self.first_point = scene_pos
+                            preview.create_preview_item(scene_pos, scene_pos)
+                            self.scene().addItem(preview.get_item())
+                        else:
+                            # clics suivants : valide un sommet supplémentaire
+                            preview.add_point(scene_pos)
+                        return
+
+                else:
+                    # Comportement inchangé (ligne, rectangle, cercle...)
+                    if event.button() == Qt.MouseButton.LeftButton:
+                        self.first_point = scene_pos
+                        preview.create_preview_item(scene_pos, scene_pos)
+                        self.scene().addItem(preview.get_item())
+                    return
+
+        if not self.camera.handle_mouse_press(event):
+            super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+
+        if event.button() == Qt.MouseButton.MiddleButton:
+            self.mouse_tracker.process_mouse_release(event)
+            self.camera.handle_mouse_release(event)
+            return
+
+        self.mouse_tracker.process_mouse_release(event)
+
+        if self.element_manager.has_preview(self.g_get_tool()) and self.first_point is not None:
+            preview = self.element_manager.get_element(self.g_get_tool()).get_preview()
+
+            if not preview.is_multi_point:
+                # Comportement inchangé : validation directe au relâchement
+                self.g_remove_item(preview.get_item())
+
+                item = self.element_manager.get_element(self.g_get_tool()).element.create_graphics_item(
+                    self.first_point, self.mapToScene(event.pos())
+                )
+                cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
+                self.scene().undo_stack.push(cmd)
+
+                self.first_point = None
+            # Si multi_point : on ne fait rien ici, la validation
+            # se fait dans mouseDoubleClickEvent.
+
+        if not self.camera.handle_mouse_release(event):
+            super().mouseReleaseEvent(event)
+
+
+    def mouseMoveEvent(self, event):
+        self.mouse_tracker.process_mouse_move(event)
+
+        if self._pending_placement_item is not None:
+            scene_pos = self.mapToScene(event.pos())
+            self._pending_placement_item.setPos(scene_pos + self._pending_placement_offset)
+            return  # n'interfère pas avec le reste (preview de dessin, etc.)
+
+        if self.element_manager.has_preview(self.g_get_tool()) and self.first_point is not None:
+            self.element_manager.get_element(self.g_get_tool()).get_preview().update_item(self.first_point, self.mapToScene(event.pos()))
+
+        if not self.camera.handle_mouse_move(event):
+            super().mouseMoveEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        self._update_rulers()
+
+        self.annotation_manager.resize_all()
+
+    def focusOutEvent(self, event):
+        self._cancel_drawing()
+        super().focusOutEvent(event)
+
+    def scrollContentsBy(self, dx: int, dy: int):
+        super().scrollContentsBy(dx, dy)
+
+        # mise a jour des rulers
+        self._update_rulers()
+
+
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key.Key_Escape:
+            self._cancel_drawing()
+            self._cancel_item_placement()  # <-- ajout
+
+        if isinstance(self.scene().focusItem(), QGraphicsTextItem):
+            super().keyPressEvent(event)
+            return
+
+        key = event.key()
+
+        for item in self.element_manager.get_all_elements():
+
+            if item.shortcut == key:
+                self.g_set_tool(item.name)
+
+                if item.cursor is None:
+                    self.unsetCursor()
+                else:
+                    self.g_set_cursor(item.cursor)
+
+                event.accept()
+
+        self.key_press_event.emit(event.key())
+
+        super().keyPressEvent(event)
+
+    # -------------------- EVENT --------------------
+
+    # -------------------- Start custom event -------
+
+    def emit_tool_changed(self, tool_name: str):
+        self.tool_changed.emit(tool_name)
+
+    def emit_selection_changed(self):
+        selected = self.scene().selectedItems()
+        self.selection_changed.emit(selected)
+
+    def emit_update_zoom(self):
+        self.zoom_changed.emit(self.camera.get_current_zoom())
+
+    # -------------------- End custom event ---------
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self.viewport())
+        if painter.begin(self.viewport()):
+            try:
+                scale = self.transform().m11()
+            finally:
+                painter.end()
+
+    # -------------------- Start import item ---------
+
+    def g_build_temporary_group(self, items: list[QGraphicsItem]) -> QGraphicsItem:
+        """
+        Construit un GroupElement contenant tous les items donnés, positionné
+        à leur centroïde. Le groupe n'est PAS ajouté à la scène ici — c'est
+        au code appelant de le faire (placement, ou ajout direct).
+        """
+        print("g_build_temporary_group")
+        print(items)
+
+        if not items:
+            raise ValueError("Impossible de créer un groupe vide")
+
+        if len(items) == 1:
+            return items[0]
+
+        center = QPointF()
+        for item in items:
+            center += item.pos()
+        center /= len(items)
+
+        print("center")
+
+        group = GroupElement.create_custom_graphics_item(
+            first_point=QPointF(0, 0), second_point=QPointF(0, 0),
+            border_color=QColor(0, 255, 0, 0), border_style=Qt.PenStyle.SolidLine,
+            border_width=10, fill_color=QColor(0, 255, 0, 0), items=items
+        )
+
+        print("group create")
+
+        group.setPos(center)
+
+        print(f"group : {group}")
+
+        """for item in items:
+            print(item)
+
+            group.add_to_group(item)"""
+
+        return group
+
+    def g_start_item_placement(self, item: QGraphicsItem, anchor: str = "center"):
+        """
+        Attache un item déjà créé (mais pas encore dans l'historique) au
+        curseur de la souris. L'item suit la souris jusqu'au clic gauche,
+        qui le fixe définitivement à la scène (avec historique).
+        Un clic droit ou Échap annule le placement.
+
+        'anchor' : "center" ou "top_left" — détermine quel point de l'item
+        reste sous le curseur pendant le déplacement.
+        """
+        if self._pending_placement_item is not None:
+            # Annule un placement précédent resté en suspens, par sécurité
+            self._cancel_item_placement()
+
+        self._pending_placement_item = item
+
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, False)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+        item.setOpacity(0.6)  # feedback visuel : item "en cours de placement"
+
+        bounding = item.boundingRect()
+        if anchor == "center":
+            self._pending_placement_offset = QPointF(-bounding.width() / 2, -bounding.height() / 2)
+        else:
+            self._pending_placement_offset = QPointF(0, 0)
+
+        self.scene().addItem(item)
+
+        # Positionne immédiatement sous le curseur actuel
+        cursor_scene_pos = self.mapToScene(self.mapFromGlobal(self.cursor().pos()))
+        item.setPos(cursor_scene_pos + self._pending_placement_offset)
+
+        self.setMouseTracking(True)  # nécessaire pour recevoir mouseMoveEvent sans clic maintenu
+
+    def _confirm_item_placement(self):
+        item = self._pending_placement_item
+        if item is None:
+            return
+
+        item.setOpacity(1.0)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
+
+        self.scene().removeItem(item)
+
+        self._pending_placement_item = None
+        self.setMouseTracking(False)
+
+        self.g_add_QGraphicitem(item, history=True)
+
+        # Sélectionne l'item/groupe fraîchement placé, pour feedback immédiat
+        item.setSelected(True)
+
+    def _cancel_item_placement(self):
+        item = self._pending_placement_item
+        if item is None:
+            return
+
+        # Si c'est un groupe temporaire, retire proprement ses enfants avant
+        # de supprimer le groupe lui-même.
+        if hasattr(item, "childItems"):
+            for child in list(item.childItems()):
+                if isinstance(child, Handle):
+                    continue
+                self.scene().removeItem(child)
+
+        self.scene().removeItem(item)
+        self._pending_placement_item = None
+        self.setMouseTracking(False)
+
+    # -------------------- Start Error manager ---------
+
+    def _handle_add_item_error(self, error: GraphicElementError):
+        """
+        Point central de gestion des erreurs de g_add_item.
+        Ne laisse jamais une exception remonter dans la boucle d'événements Qt.
+        """
+        import logging
+        logging.getLogger(__name__).error(str(error))
+
+
