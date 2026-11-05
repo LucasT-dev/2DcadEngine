@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGra
 from libs.cadengine.adapter import AdpaterItem
 from libs.cadengine.draw.HistoryManager import ModifyItemCommand
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
@@ -49,6 +51,10 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
     def _mid_right(rect: QRectF) -> QPointF:
         return QPointF(rect.right(), (rect.top() + rect.bottom()) / 2)
 
+    @staticmethod
+    def _center(rect: QRectF) -> QPointF:
+        return QPointF(rect.center())
+
     def _create_handles(self):
         """Crée les 4 Handles de redimensionnement."""
         rect = self.rect()
@@ -61,6 +67,8 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         self.add_handle("bottom", self._mid_bottom(rect))
         self.add_handle("left", self._mid_left(rect))
         self.add_handle("right", self._mid_right(rect))
+
+        self.add_handle("center", self._center(rect))
 
         self.update_handles_position()
 
@@ -79,6 +87,8 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         self.handles["left"].setPos(self._mid_left(rect))
         self.handles["right"].setPos(self._mid_right(rect))
 
+        self.handles["center"].setPos(self._center(rect))
+
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
         """Appelé quand un handle est déplacé (par Handle)."""
 
@@ -89,10 +99,12 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         local_pos = self.mapFromScene(scene_pos)
         rect = QRectF(self.rect())
 
-        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
+        snap_candidate_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
 
-        if snap_point_other_q_graphics_item:
-            local_pos = self.mapFromScene(snap_point_other_q_graphics_item)
+        if snap_candidate_other_q_graphics_item:
+            local_pos = self.mapFromScene(snap_candidate_other_q_graphics_item.point)
+            self.get_snap_indicator().show_at(snap_candidate_other_q_graphics_item, self.scene())
+
         if role == "top_left":
             rect.setTopLeft(local_pos)
         elif role == "top_right":
@@ -111,11 +123,17 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         elif role == "right":
             rect.setRight(local_pos.x())
 
+        elif role == "center":
+            center = rect.center()
+            dx = local_pos.x() - center.x()
+            dy = local_pos.y() - center.y()
+            rect.translate(dx, dy)
+
         rect = rect.normalized()
         self.setRect(rect)
         self.update_handles_position()
 
-    def _calcul_point_of_interest(self):
+    def _calcul_point_of_interest(self) -> list[PointOfInterest]:
         rect = self.boundingRect()
 
         tl = rect.topLeft()
@@ -129,25 +147,33 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         lm = (QPointF((tl.x() + bl.x()) / 2, (tl.y() + bl.y()) / 2))
         rm = (QPointF((tr.x() + br.x()) / 2, (tr.y() + br.y()) / 2))
 
-        return [tl, tr, br, bl, c, tm, bm, lm, rm]
+        return [
+            PointOfInterest(tl, SnapType.ENDPOINT, "top_left", is_default=True),
+            PointOfInterest(tr, SnapType.ENDPOINT, "top_right", is_default=True),
+            PointOfInterest(br, SnapType.ENDPOINT, "bottom_right", is_default=True),
+            PointOfInterest(bl, SnapType.ENDPOINT, "bottom_left", is_default=True),
+            PointOfInterest(c, SnapType.CENTRAL, "center", is_default=True),
+            PointOfInterest(tm, SnapType.MIDPOINT, "top_mid", is_default=True),
+            PointOfInterest(bm, SnapType.MIDPOINT, "bottom_mid", is_default=True),
+            PointOfInterest(lm, SnapType.MIDPOINT, "left_mid", is_default=True),
+            PointOfInterest(rm, SnapType.MIDPOINT, "right_mid", is_default=True),
+        ]
 
-    def _add_point_of_interest(self):
+    def _add_point_of_interest(self) :
 
         for p in self._calcul_point_of_interest() :
             self.add_point_of_interest(p)
 
-        return self._custom_points_of_interest
-
     def _update_point_of_interest(self):
 
-        for index, p in enumerate(self._calcul_point_of_interest()) :
-            self.replace_point_of_interest(p, index)
+        for p in self._calcul_point_of_interest() :
+            self.replace_point_of_interest(p)
 
-    def get_point_of_interest(self) -> list[QPointF]:
+    def get_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
 
-        points: list[QPointF] = []
-        for point in self._custom_points_of_interest:
-            points.append(self.mapToScene(point))
+        points: list[tuple[QPointF, SnapType]] = []
+        for poi in self._custom_points_of_interest:
+            points.append((self.mapToScene(poi.point), poi.snap_type))
 
         return points
 
@@ -163,6 +189,7 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
         self.save_history_geometry()
         self._update_point_of_interest()
         self._end_resize()
+        self.get_snap_indicator().hide_indicator()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur l'ellipse."""
@@ -262,9 +289,8 @@ class EllipseResizable(ResizableGraphicsItem, QGraphicsEllipseItem):
 
         item.setTransform(transform)
 
-        points_data = data.get("points_of_interest", [])
-        for p in points_data:
-            point: QPointF = AdpaterItem.point_from_dict(p["p"])
-            item.add_point_of_interest(point)
+        for poi_dict in item_data.get("custom_points_of_interest", []):
+            poi = AdpaterItem.poi_from_dict(poi_dict)
+            item.add_point_of_interest(poi)
 
         return item

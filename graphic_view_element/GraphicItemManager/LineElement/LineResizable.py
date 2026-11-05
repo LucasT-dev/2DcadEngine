@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QGraphicsLineItem, QGraphicsSceneMouseEvent, QGraphi
 from libs.cadengine.adapter import AdpaterItem
 from libs.cadengine.draw.HistoryManager import ModifyItemCommand
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
@@ -19,7 +21,7 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.add_handle("end", self.line().p2())
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
-
+        print("handle moved")
         if not self.get_item_is_resizable() : return # The item is not resizable.
 
         new_pos = self.mapFromScene(event.scenePos())
@@ -33,12 +35,17 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
             fixed = self.mapToScene(line.p1())
 
         snap_angle = self._find_angle_auto(fixed, scene_pos)
-        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
+        snap_candidate_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
+        print(f"snap_candidate_other_q_graphics_item : {snap_candidate_other_q_graphics_item}")
+        if snap_candidate_other_q_graphics_item:
+            new_pos = self.mapFromScene(snap_candidate_other_q_graphics_item.point)
+            self.get_snap_indicator().show_at(snap_candidate_other_q_graphics_item, self.scene())
 
-        if snap_point_other_q_graphics_item:
-            new_pos = self.mapFromScene(snap_point_other_q_graphics_item)
         elif snap_angle:
             new_pos = self.mapFromScene(snap_angle)
+
+        else :
+            self.get_snap_indicator().hide_indicator()
 
         if role == "start":
             line.setP1(new_pos)
@@ -48,37 +55,35 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.setLine(line)
         self.update_handles_position()
 
-    def _calcul_point_of_interest(self):
+    def _calcul_point_of_interest(self) -> list[PointOfInterest]:
         line = self.line()
 
-        p1 = line.p1()
-        p2 = line.p2()
-        mid = QPointF((p1.x() + p2.x()) / 2, (p1.y() + p2.y()) / 2)
-
-        return [p1, p2, mid]
+        return [
+            PointOfInterest(line.p1(), SnapType.ENDPOINT, "p1", is_default=True),
+            PointOfInterest(line.p2(), SnapType.ENDPOINT, "p2", is_default=True),
+            PointOfInterest(line.center(), SnapType.MIDPOINT, "middle", is_default=True),
+        ]
 
     def _add_point_of_interest(self):
 
-        for p in self._calcul_point_of_interest() :
+        for p in self._calcul_point_of_interest():
             self.add_point_of_interest(p)
-
-        return self._custom_points_of_interest
 
     def _update_point_of_interest(self):
 
-        for index, p in enumerate(self._calcul_point_of_interest()) :
-            self.replace_point_of_interest(p, index)
+        for p in self._calcul_point_of_interest():
+            self.replace_point_of_interest(p)
 
-    def get_point_of_interest(self) -> list[QPointF]:
-
-        points: list[QPointF] = []
-        for point in self._custom_points_of_interest:
-            points.append(self.mapToScene(point))
+    def get_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
+        print("rect get_point_of_interest")
+        points: list[tuple[QPointF, SnapType]] = []
+        for poi in self._custom_points_of_interest:
+            points.append((self.mapToScene(poi.point), poi.snap_type))
 
         return points
 
     def get_line_of_interest(self) -> list[QLineF]:
-
+        print("line get_line_of_interest")
         line = self.line()
 
         p1 = self.mapToScene(line.p1())
@@ -102,6 +107,7 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.save_history_geometry()
         self._update_point_of_interest()
         self._end_resize()
+        self._snap_indicator.hide_indicator()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur ligne."""
@@ -206,7 +212,7 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
 
         item.setTransform(transform)
 
-        points_data = data.get("points_of_interest", [])
+        points_data = item_data.get("points_of_interest", [])
         for p in points_data:
             point: QPointF = AdpaterItem.point_from_dict(p["p"])
             item.add_point_of_interest(point)

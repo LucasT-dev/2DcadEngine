@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QGraphicsPathItem, QGraphicsSceneMouseEvent, QGraphi
 from libs.cadengine.adapter import AdpaterItem
 from libs.cadengine.draw.HistoryManager import ModifyItemCommand
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
@@ -40,7 +42,7 @@ class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
         """Mise à jour de la polyligne lorsqu'un handle est déplacé."""
-
+        print("pathline handle_moved")
         if not self.get_item_is_resizable(): return  # The item is not resizable.
 
         index = self._index_from_role(role)
@@ -50,12 +52,12 @@ class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         fixed_prev = self.mapToScene(self._points[index - 1]) if index > 0 else None
         fixed_next = self.mapToScene(self._points[index + 1]) if index < len(self._points) - 1 else None
 
-        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self, exclude_point_index=index)
+        snap_candidate_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self, exclude_point_index=index)
+        snap_result: QPointF | None
 
-        snap_result = None
-
-        if snap_point_other_q_graphics_item:
-            snap_result = snap_point_other_q_graphics_item
+        if snap_candidate_other_q_graphics_item:
+            snap_result = snap_candidate_other_q_graphics_item.point
+            self.get_snap_indicator().show_at(snap_candidate_other_q_graphics_item, self.scene())
 
         elif fixed_prev is not None and fixed_next is not None:
             # Sommet intermédiaire : tente d'abord le snap de coin (angle droit exact)
@@ -79,34 +81,38 @@ class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self._rebuild_path()
         self.update_handles_position()
 
-    def _calcul_point_of_interest(self):
-
+    def _calcul_point_of_interest(self) -> list[PointOfInterest]:
+        print("pathline _calcul_point_of_interest")
         anchors = self._points
-        points = anchors.copy()
+        points: list[PointOfInterest] = []
 
-        for i in range(len(anchors) - 1):
-            a, b = anchors[i], anchors[i + 1]
-            points.append(QPointF((a.x() + b.x()) / 2, (a.y() + b.y()) / 2))
+        for i in range(len(anchors)):
+            points.append(PointOfInterest(anchors[i], SnapType.ENDPOINT, "anchor_" + str(i), is_default=True))
+
+            if i <= (len(anchors) - 2):
+                a, b = anchors[i], anchors[i + 1]
+                point = QPointF((a.x() + b.x()) / 2, (a.y() + b.y()) / 2)
+                points.append(PointOfInterest(point, SnapType.MIDPOINT, "midpoint_" + str(i), is_default=True))
 
         return points
 
     def _add_point_of_interest(self):
-
-        for p in self._calcul_point_of_interest() :
+        print("pathline _add_point_of_interest")
+        for p in self._calcul_point_of_interest():
             self.add_point_of_interest(p)
 
         return self._custom_points_of_interest
 
     def _update_point_of_interest(self):
+        print("pathline _update_point_of_interest")
+        for p in self._calcul_point_of_interest():
+            self.replace_point_of_interest(p)
 
-        for index, p in enumerate(self._calcul_point_of_interest()) :
-            self.replace_point_of_interest(p, index)
-
-    def get_point_of_interest(self) -> list[QPointF]:
-
-        points: list[QPointF] = []
-        for point in self._custom_points_of_interest:
-            points.append(self.mapToScene(point))
+    def get_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
+        print("pathline get_point_of_interest")
+        points: list[tuple[QPointF, SnapType]] = []
+        for poi in self._custom_points_of_interest:
+            points.append((self.mapToScene(poi.point), poi.snap_type))
 
         return points
 
@@ -140,6 +146,7 @@ class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self.save_history_geometry()
         self._update_point_of_interest()
         self._end_resize()
+        self.get_snap_indicator().hide_indicator()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur la polyligne."""
@@ -234,9 +241,8 @@ class PathLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
         item.setTransform(transform)
 
-        points_data = data.get("points_of_interest", [])
-        for p in points_data:
-            point: QPointF = AdpaterItem.point_from_dict(p["p"])
-            item.add_point_of_interest(point)
+        for poi_dict in item_data.get("custom_points_of_interest", []):
+            poi = AdpaterItem.poi_from_dict(poi_dict)
+            item.add_point_of_interest(poi)
 
         return item

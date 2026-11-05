@@ -6,6 +6,8 @@ from PyQt6.QtWidgets import QGraphicsItem, QGraphicsSceneMouseEvent
 from libs.cadengine.adapter import AdpaterItem
 from libs.cadengine.draw.HistoryManager import ModifyItemCommand
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
@@ -89,6 +91,14 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
             return
 
         scene_pos = event.scenePos()
+        snap_candidate = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
+
+        if snap_candidate is not None:
+            scene_pos = snap_candidate.point  # on remplace la position souris par le point accroché
+            self.get_snap_indicator().show_at(snap_candidate, self.scene())
+        else:
+            self.get_snap_indicator().hide_indicator()
+
         local_pos = self.mapFromScene(scene_pos)
         rect = self.boundingRect()
 
@@ -139,7 +149,7 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
         self.prepareGeometryChange()
         self.update_handles_position()
 
-    def _calcul_point_of_interest(self):
+    def _calcul_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
         rect = self.boundingRect()
 
         tl = rect.topLeft()
@@ -153,25 +163,35 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
         lm = (QPointF((tl.x() + bl.x()) / 2, (tl.y() + bl.y()) / 2))
         rm = (QPointF((tr.x() + br.x()) / 2, (tr.y() + br.y()) / 2))
 
-        return [tl, tr, br, bl, c, tm, bm, lm, rm]
+        return [
+            PointOfInterest(tl, SnapType.ENDPOINT, "top_left", is_default=True),
+            PointOfInterest(tr, SnapType.ENDPOINT, "top_right", is_default=True),
+            PointOfInterest(br, SnapType.ENDPOINT, "bottom_right", is_default=True),
+            PointOfInterest(bl, SnapType.ENDPOINT, "bottom_left", is_default=True),
+            PointOfInterest(c, SnapType.CENTRAL, "center", is_default=True),
+            PointOfInterest(tm, SnapType.MIDPOINT, "top_mid", is_default=True),
+            PointOfInterest(bm, SnapType.MIDPOINT, "bottom_mid", is_default=True),
+            PointOfInterest(lm, SnapType.MIDPOINT, "left_mid", is_default=True),
+            PointOfInterest(rm, SnapType.MIDPOINT, "right_mid", is_default=True),
+        ]
 
-    def _add_point_of_interest(self):
+    def _add_point_of_interest(self) -> list[PointOfInterest]:
 
-        for p in self._calcul_point_of_interest() :
+        for p in self._calcul_point_of_interest():
             self.add_point_of_interest(p)
 
         return self._custom_points_of_interest
 
     def _update_point_of_interest(self):
 
-        for index, p in enumerate(self._calcul_point_of_interest()) :
-            self.replace_point_of_interest(p, index)
+        for p in self._calcul_point_of_interest():
+            self.replace_point_of_interest(p)
 
-    def get_point_of_interest(self) -> list[QPointF]:
+    def get_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
 
-        points: list[QPointF] = []
-        for point in self._custom_points_of_interest:
-            points.append(self.mapToScene(point))
+        points: list[tuple[QPointF, SnapType]] = []
+        for poi in self._custom_points_of_interest:
+            points.append((self.mapToScene(poi.point), poi.snap_type))
 
         return points
 
@@ -203,6 +223,7 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
         self.save_history_geometry()
         self._update_point_of_interest()
         self._end_resize()
+        self.get_snap_indicator().hide_indicator()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur le pixmap."""
@@ -306,10 +327,9 @@ class ImageSVGResizable(ResizableGraphicsItem, QGraphicsSvgItem):
 
         item.setTransform(transform)
 
-        points_data = data.get("points_of_interest", [])
-        for p in points_data:
-            point: QPointF = AdpaterItem.point_from_dict(p["p"])
-            item.add_point_of_interest(point)
+        for poi_dict in item_data.get("custom_points_of_interest", []):
+            poi = AdpaterItem.poi_from_dict(poi_dict)
+            item.add_point_of_interest(poi)
 
         return item
 

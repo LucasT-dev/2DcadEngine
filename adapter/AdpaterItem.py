@@ -7,6 +7,8 @@ from PyQt6.QtGui import QPen, QBrush, QColor, QTransform, QFont, QPixmap
 from PyQt6.QtWidgets import QGraphicsItem
 
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 def get_data(item):
@@ -26,9 +28,7 @@ def get_data(item):
         },
         "is_resizable": item.get_item_is_resizable(),
         "snap_point_enable": item.get_snap_is_enable(),
-        "points_of_interest" : [
-            {"p" : point_to_dict(p)} for p in item.get_points_of_interest_local()
-        ],
+        "points_of_interest": [poi_to_dict(p) for p in item.get_custom_points_of_interest_local()],
 
     }
 
@@ -112,6 +112,24 @@ def point_to_dict(point: QPointF) -> dict:
 
 def point_from_dict(data: dict) -> QPointF:
     return QPointF(data["x"], data["y"])
+
+def poi_to_dict(poi: PointOfInterest) -> dict:
+    print(poi)
+    return {
+        "point": point_to_dict(poi.point),
+        "snap_type": poi.snap_type.name,   # ex: "ENDPOINT" — plus robuste qu'un int
+        "name": poi.name,
+        "is_default": poi.is_default,
+    }
+
+
+def poi_from_dict(d: dict) -> PointOfInterest:
+    return PointOfInterest(
+        point=point_from_dict(d["point"]),
+        snap_type=SnapType[d["snap_type"]],
+        name=d.get("name"),
+        is_default=d.get("is_default", False),
+    )
 
 
 def penstyle_to_int( style: Qt.PenStyle) -> int:

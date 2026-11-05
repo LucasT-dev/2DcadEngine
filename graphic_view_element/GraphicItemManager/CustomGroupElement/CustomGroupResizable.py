@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QGraphicsRectItem, QGraphicsSceneMouseEvent, QGraphi
 
 from libs.cadengine.adapter import AdpaterItem
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 class CustomGroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
@@ -205,27 +207,25 @@ class CustomGroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
                 item.setPos(new_rect.topLeft())
                 item.setTextWidth(max(new_rect.width(), 1.0))
 
-    def _calcul_point_of_interest(self):
+    def _calcul_point_of_interest(self) -> list[PointOfInterest]:
         """L'utilisateur est libre de mettre les points d'interet"""
         return []
 
-    def _add_point_of_interest(self):
+    def _add_point_of_interest(self) :
 
-        for p in self._calcul_point_of_interest():
+        for p in self._calcul_point_of_interest() :
             self.add_point_of_interest(p)
-
-        return self._custom_points_of_interest
 
     def _update_point_of_interest(self):
 
-        for index, p in enumerate(self._calcul_point_of_interest()):
-            self.replace_point_of_interest(p, index)
+        for p in self._calcul_point_of_interest() :
+            self.replace_point_of_interest(p)
 
-    def get_point_of_interest(self) -> list[QPointF]:
+    def get_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
 
-        points: list[QPointF] = []
-        for point in self._custom_points_of_interest:
-            points.append(self.mapToScene(point))
+        points: list[tuple[QPointF, SnapType]] = []
+        for poi in self._custom_points_of_interest:
+            points.append((self.mapToScene(poi.point), poi.snap_type))
 
         return points
 
@@ -437,10 +437,9 @@ class CustomGroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
 
         group.setTransform(transform)
 
-        points_data = data.get("points_of_interest", [])
-        for p in points_data:
-            point: QPointF = AdpaterItem.point_from_dict(p["p"])
-            group.add_point_of_interest(point)
+        for poi_dict in item_data.get("custom_points_of_interest", []):
+            poi = AdpaterItem.poi_from_dict(poi_dict)
+            item_data.add_point_of_interest(poi)
 
         return group
 

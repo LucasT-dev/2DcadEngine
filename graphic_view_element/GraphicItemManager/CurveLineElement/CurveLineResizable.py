@@ -5,6 +5,8 @@ from PyQt6.QtWidgets import QGraphicsPathItem, QGraphicsSceneMouseEvent, QGraphi
 from libs.cadengine.adapter import AdpaterItem
 from libs.cadengine.draw.HistoryManager import ModifyItemCommand
 from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.ResizableGraphicsItem import ResizableGraphicsItem
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.PointOfInterest import PointOfInterest
+from libs.cadengine.graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum import SnapType
 
 
 def build_smooth_path(points: list[QPointF]) -> QPainterPath:
@@ -78,12 +80,13 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         fixed_prev = self.mapToScene(self._points[index - 1]) if index > 0 else None
         fixed_next = self.mapToScene(self._points[index + 1]) if index < len(self._points) - 1 else None
 
-        snap_point_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
+        snap_candidate_other_q_graphics_item = self._find_snap_point(self.scene(), scene_pos, item_moved=self)
 
-        snap_result = None
+        snap_result: QPointF | None = None
 
-        if snap_point_other_q_graphics_item:
-            snap_result = snap_point_other_q_graphics_item
+        if snap_candidate_other_q_graphics_item:
+            snap_result = snap_candidate_other_q_graphics_item.point
+            self.get_snap_indicator().show_at(snap_candidate_other_q_graphics_item, self.scene())
 
         elif fixed_prev is not None and fixed_next is not None:
             # Sommet intermédiaire : tente d'abord le snap de coin (angle droit exact)
@@ -108,29 +111,30 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self._rebuild_path()
         self.update_handles_position()
 
-    def _calcul_point_of_interest(self):
+    def _calcul_point_of_interest(self) -> list[PointOfInterest]:
         anchors = self._points
-        points = list(anchors)
+        points: list[PointOfInterest] = []
+
+        for i in range(len(anchors)):
+            points.append(PointOfInterest(anchors[i], SnapType.ENDPOINT, "anchor" + str(i), is_default=True))
 
         return points
 
     def _add_point_of_interest(self):
 
-        for p in self._calcul_point_of_interest() :
+        for p in self._calcul_point_of_interest():
             self.add_point_of_interest(p)
-
-        return self._custom_points_of_interest
 
     def _update_point_of_interest(self):
 
-        for index, p in enumerate(self._calcul_point_of_interest()) :
-            self.replace_point_of_interest(p, index)
+        for p in self._calcul_point_of_interest():
+            self.replace_point_of_interest(p)
 
-    def get_point_of_interest(self) -> list[QPointF]:
+    def get_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
 
-        points: list[QPointF] = []
-        for point in self._custom_points_of_interest:
-            points.append(self.mapToScene(point))
+        points: list[tuple[QPointF, SnapType]] = []
+        for poi in self._custom_points_of_interest:
+            points.append((self.mapToScene(poi.point), poi.snap_type))
 
         return points
 
@@ -150,6 +154,7 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
         self.save_history_geometry()
         self._update_point_of_interest()
         self._end_resize()
+        self.get_snap_indicator().hide_indicator()
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         """Gestion de l'appui sur la polyligne."""
@@ -244,10 +249,9 @@ class CurveLineResizable(ResizableGraphicsItem, QGraphicsPathItem):
 
         item.setTransform(transform)
 
-        points_data = data.get("points_of_interest", [])
-        for p in points_data:
-            point: QPointF = AdpaterItem.point_from_dict(p["p"])
-            item.add_point_of_interest(point)
+        for poi_dict in item_data.get("custom_points_of_interest", []):
+            poi = AdpaterItem.poi_from_dict(poi_dict)
+            item.add_point_of_interest(poi)
 
         return item
 

@@ -535,9 +535,8 @@ class GraphicView(QGraphicsView):
             class_path = entry.get("data", {}).get("class")
             resizable_class = self.resolve_class_from_path(class_path)
 
-            print(class_path)
-            print(resizable_class)
-
+            print(f"class_path : {class_path}")
+            print(f"resizable_class : {resizable_class}")
 
             try:
                 item = resizable_class.from_dict(data=entry)
