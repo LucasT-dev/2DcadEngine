@@ -12,9 +12,7 @@ log = logging.getLogger(__name__)
 class MainCad(QWidget):
 
     def __init__(self, configurator=None, show_ruler=True, parent=None):
-        print("maincad")
         super().__init__(parent)
-
 
         self._configurator = configurator
         self._initialized = False
@@ -29,13 +27,13 @@ class MainCad(QWidget):
             self._scene,
             show_ruler=show_ruler,
             ruler_positions={"horizontal": "bottom", "vertical": "left"},
-            parent=self  # <-- AJOUTEZ CECI
+            parent=self
         )
 
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0,0,0,0)
         self.layout.addWidget(self._graphic_view)
 
-        # Timer enfant de self : détruit avec le widget, donc jamais de callback orphelin
         self._init_timer = QTimer(self)
         self._init_timer.setSingleShot(True)
         self._init_timer.timeout.connect(self._run_configurator)
@@ -53,14 +51,19 @@ class MainCad(QWidget):
         self.g_init_engine()
 
     def g_init_engine(self):
-        """Appelle la configuration si un configurateur est passé."""
-        if self._configurator is not None:
-            try:
+        """Appelle le configurateur externe puis le hook de la sous-classe."""
+        try:
+            if self._configurator is not None:
                 self._configurator.init(self)
-            except Exception:
-                log.exception("Erreur dans le configurateur graphique")
+            self.on_ready()
+        except Exception:
+            log.exception("Error during view initialization")
 
-    # Nettoyage
+    def on_ready(self):
+        """To be overridden in a subclass. Called once, when the view is displayed."""
+        pass
+
+    # Clean
     def dispose(self):
         if self._disposed:
             return
