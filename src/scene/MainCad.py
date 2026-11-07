@@ -1,3 +1,5 @@
+import logging
+
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QUndoStack
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
@@ -5,21 +7,22 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from scene.GraphicScene import GraphicScene
 from scene.GraphicView import GraphicViewContainer
 
+log = logging.getLogger(__name__)
 
 class MainCad(QWidget):
 
-    def __init__(self, configurator=None, show_ruler=True):
+    def __init__(self, configurator=None, show_ruler=True, parent=None):
         print("maincad")
-        super().__init__()
+        super().__init__(parent)
 
-        # --- Pile d'historique ---
+
         self._configurator = configurator
-        self.undo_stack = QUndoStack(self)
-        print("scene")
-        # --- Crée la scène avec Undo intégré ---
-        self._scene = GraphicScene(self.undo_stack)
+        self._initialized = False
+        self._disposed = False
 
-        print(self._scene)
+        # Pile d'historique
+        self.undo_stack = QUndoStack(self)
+        self._scene = GraphicScene(self.undo_stack, self)
 
         # Vue avec règles en bas et à droite
         self._graphic_view = GraphicViewContainer(
@@ -28,40 +31,54 @@ class MainCad(QWidget):
             ruler_positions={"horizontal": "bottom", "vertical": "left"},
             parent=self  # <-- AJOUTEZ CECI
         )
-        print(self._graphic_view)
 
         self.layout = QVBoxLayout(self)
         self.layout.addWidget(self._graphic_view)
 
-        print(self.layout)
+        # Timer enfant de self : détruit avec le widget, donc jamais de callback orphelin
+        self._init_timer = QTimer(self)
+        self._init_timer.setSingleShot(True)
+        self._init_timer.timeout.connect(self._run_configurator)
 
-        # Appeler initEngine APRES construction complète
+    # Initialisation différée au premier affichage (taille réelle connue)
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not self._initialized:
+            self._initialized = True
+            self._init_timer.start(0)
 
-        QTimer.singleShot(0, self.g_init_engine)
-
-
-    # --- API pour accéder à la vue ou la scène ---
-    @property
-    def g_get_view(self):
-        return self._graphic_view.view
-
-    @property
-    def g_get_graphic_view(self):
-        return self._graphic_view
-
-    @property
-    def g_get_scene(self):
-        return self._scene
-
-    @property
-    def g_get_history(self):
-        return self.undo_stack
-
-    @property
-    def g_get_configurator(self):
-        return self._configurator
+    def _run_configurator(self):
+        if self._disposed:
+            return
+        self.g_init_engine()
 
     def g_init_engine(self):
-        """Appel la configuration si un configurateur est passé"""
+        """Appelle la configuration si un configurateur est passé."""
         if self._configurator is not None:
-            self._configurator.init(self)
+            try:
+                self._configurator.init(self)
+            except Exception:
+                log.exception("Erreur dans le configurateur graphique")
+
+    # Nettoyage
+    def dispose(self):
+        if self._disposed:
+            return
+        self._disposed = True
+        self._init_timer.stop()
+        self._graphic_view.dispose()
+        self._scene.clear()
+        self.undo_stack.clear()
+
+    # --- API ---
+    @property
+    def g_get_view(self):            return self._graphic_view.view
+    @property
+    def g_get_graphic_view(self):    return self._graphic_view
+    @property
+    def g_get_scene(self):           return self._scene
+    @property
+    def g_get_history(self):         return self.undo_stack
+    @property
+    def g_get_configurator(self):    return self._configurator
+

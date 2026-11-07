@@ -30,14 +30,14 @@ class GraphicViewContainer(QWidget):
     def __init__(self, scene: QGraphicsScene, show_ruler=False, ruler_positions=None, parent=None):
         super().__init__(parent)
 
-        self.view = GraphicView(scene)
-        self.show_ruler = show_ruler
 
-        # Définir les positions par défaut si non spécifiées
+        self.show_ruler = show_ruler
         self.ruler_positions = ruler_positions or {
             "horizontal": "top",    # "top" ou "bottom"
             "vertical": "left"      # "left" ou "right"
         }
+
+        self.view = GraphicView(scene, self)
 
         self.layout = QGridLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -104,6 +104,8 @@ class GraphicViewContainer(QWidget):
         # Réinitialiser l'interface avec les nouvelles positions
         self._setup_ui()
 
+    def dispose(self):
+        self.view.dispose()
 
 class GraphicView(QGraphicsView):
 
@@ -151,6 +153,21 @@ class GraphicView(QGraphicsView):
         self._pending_placement_item: QGraphicsItem | None = None
         self._pending_placement_offset: QPointF = QPointF(0, 0)
 
+        self._scene_ref = scene
+        scene.selectionChanged.connect(self.emit_selection_changed)
+
+    def dispose(self):
+        """À appeler avant la destruction (fermeture d'onglet)."""
+        try:
+            self._scene_ref.selectionChanged.disconnect(self.emit_selection_changed)
+        except (TypeError, RuntimeError):
+            pass
+        # Si Grid / Camera / MouseTracker installent des event filters ou des timers,
+        # fais-leur un cleanup() ici :
+        for comp in (self.mouse_tracker, self.camera, self.grid, self.annotation_manager):
+            if hasattr(comp, "cleanup"):
+                comp.cleanup()
+        self.setScene(None)
 
     def g_set_render_hit(self, render: QPainter.RenderHint):
         self.setRenderHint(render)
