@@ -333,12 +333,12 @@ class ResizableGraphicsItem:
 
                         line_candidates.append(SnapCandidate(point, SnapType.PROJECTION))"""
 
-            # Projection continue du handle déplacé sur chaque ligne statique
-            a, b = line.p1(), line.p2()
-            proj = self._closest_point_on_segment(scene_pos, a, b)
-            if dist_sq(proj) <= line_radius * line_radius:
-                pass
-                #line_candidates.append(SnapCandidate(proj, SnapType.PROJECTION))
+                # Projection continue du handle déplacé sur chaque ligne statique
+                a, b = line.p1(), line.p2()
+                proj = self._closest_point_on_segment(scene_pos, a, b)
+                if dist_sq(proj) <= line_radius * line_radius:
+                    pass
+                    #line_candidates.append(SnapCandidate(proj, SnapType.PROJECTION))
 
         # priorité absolue aux points fixes s'il y en a un dans le rayon serré
         if point_candidates:
