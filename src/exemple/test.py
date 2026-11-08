@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
 )
 
-from exemple.GraphicWindow import GraphicWindow
+from exemple.graphic_window_test import GraphicWindow
 
 from scene.MainCad import MainCad
 

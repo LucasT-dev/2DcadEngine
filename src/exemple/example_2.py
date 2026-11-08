@@ -32,9 +32,10 @@ from graphic_view_element.GraphicItemManager.TextElement.TextPreview import Text
 from graphic_view_element.GraphicItemManager.TextElement.TextResizable import TextResizable
 
 
-class MyWidget:
+class Example_2:
 
-    def configure(self, maincad):
+
+    def init(self, maincad):
         print("configure")
         """
         Reçoit une instance de MainCad,
@@ -117,6 +118,10 @@ class MyWidget:
                           second_point=QPointF(180, 250),
                           z_value=100)
 
+        view.g_set_shortcut_undo_action()
+        view.g_set_shortcut_redo_action()
+        view.g_set_shortcut_delete_item()
+
         print("Moteur initialisé !")
 
 
@@ -126,7 +131,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
-    window = MainCad(configurator=MyWidget(), show_ruler=True)
+    window = MainCad(configurator=Example_2(), show_ruler=True)
     print(window)
     window.show()
 

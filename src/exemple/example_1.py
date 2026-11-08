@@ -36,37 +36,15 @@ from scene.MainCad import MainCad
 """
 Todo list :
 
-OK -> voir pour mettre une meilleure preview pour les piwmap
-OK -> corriger les hitbox des textes
-OK -> bug avec les lettres des raccourci non utilisable dans les textes
-OK -> systeme de groupe d'object
-OK -> historique -> gestion des groupes d'object
-OK -> bug -> régle et niveau de zoom non fonctionnel
-OK -> ajouter la possibilité de creer des groupes d'object
-OK -> systeme de sauvegarde de la scene en fichier de config
-OK -> bug -> les images sont pas enregistré
-OK -> bug -> apres une restauration l'emplacement du pixmap est différent
-OK -> bug -> text a l'envers
-OK -> bug -> verifier les groupes d'item sauvegardé
-OK -> bug -> groupe d'item a revoir !
-OK -> bug -> resize des groupes non fonctionnel
-OK -> bug -> resize des groupes non fonctionnel supprimé
-OK -> undo des groupes / ungroupe !
-OK -> destruction des groupes
-OK -> Export sous PDF...
-OK -> resize groupe a tester
-OK -> bug -> les objects bouge lors de la création d'un item
-OK -> bug -> pas de undo sur la création d'item
-
 historique -> historiser les changements de couleur (move/resize OK) -> A tester
 
 bug -> disparition des item apres un group / ungroup
 legée bug sur le zoom
 
 """
-class MyWindow(MainCad):
+class Example_1(MainCad):
 
-    def g_init_engine(self):
+    def on_ready(self):
 
         # self.graphic_view = GraphicView(self.scene, show_ruler=True)
 
@@ -167,7 +145,7 @@ class MyWindow(MainCad):
         self.g_get_view.mouse_tracker.mouseMoved.connect(lambda state: self.mousse_move(state["scene_pos"]))
         self.g_get_view.mouse_tracker.mouseMoved.connect(lambda state: self.update_history(self._scene))
         self.g_get_view.tool_changed.connect(lambda tool: self.change_tool(tool))
-        self.g_get_view.on_selection_change_event.connect(lambda selection: self.selection_changed(selection))
+        self.g_get_view.selection_changed.connect(lambda selection: self.selection_changed(selection))
 
         # self.g_get_view.mouse_tracker.mouseClicked.connect(lambda state: print("Click", state["buttons"]))
         # self.g_get_view.mouse_tracker.mouseDoubleClicked.connect(lambda state: print("Double click"))
@@ -373,7 +351,7 @@ class MyWindow(MainCad):
 if __name__ == "__main__":
 
     app = QApplication(sys.argv)
-    window = MyWindow()
+    window = Example_1()
     window.show()
 
     window.resize(800, 600)
