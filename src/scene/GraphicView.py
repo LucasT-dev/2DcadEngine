@@ -967,12 +967,12 @@ class GraphicView(QGraphicsView):
 
     def paintEvent(self, event):
         super().paintEvent(event)
-        painter = QPainter(self.viewport())
-        if painter.begin(self.viewport()):
-            try:
-                scale = self.transform().m11()
-            finally:
-                painter.end()
+
+        painter = QPainter(self.viewport())  # begin() est déjà fait ici
+        try:
+            scale = self.transform().m11()
+        finally:
+            painter.end()
 
     # -------------------- Start import item ---------
 
