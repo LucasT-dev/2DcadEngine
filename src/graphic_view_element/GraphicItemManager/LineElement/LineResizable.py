@@ -212,12 +212,10 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
 
         item.setTransform(transform)
 
-        points_data = item_data.get("points_of_interest", [])
-        for p in points_data:
-            point: QPointF = AdpaterItem.point_from_dict(p["p"])
-            item.add_point_of_interest(point)
+        for poi_dict in item_data.get("points_of_interest", []):
 
-        item.set_snap_enable(item_data["snap_point_enable"])
+            poi = AdpaterItem.poi_from_dict(poi_dict)
+            item.add_point_of_interest(poi)
 
         return item
 
