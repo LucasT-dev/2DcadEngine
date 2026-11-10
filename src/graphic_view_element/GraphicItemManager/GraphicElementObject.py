@@ -1,7 +1,7 @@
 from typing import List
 
 from PyQt6.QtCore import Qt, QPointF
-from PyQt6.QtGui import QCursor
+from PyQt6.QtGui import QCursor, QTransform
 from PyQt6.QtWidgets import QGraphicsItem
 from abc import ABC, abstractmethod
 
@@ -13,6 +13,7 @@ class ElementObject:
 
     def __init__(self, style: StyleElement):
         self._style = style
+        self._view = None
 
     def get_style(self):
         return self._style
@@ -25,6 +26,44 @@ class ElementObject:
     def create_custom_graphics_item(self, **kwargs) -> QGraphicsItem:
         """Méthode à implémenter pour chaque type d'élément avec ses paramètres spécifiques."""
         pass
+
+    def set_view(self, view):
+        self._view = view
+        return self
+
+
+    @property
+    def view_transform(self) -> QTransform:
+        return self._view.transform() if self._view is not None else QTransform()
+
+    @property
+    def m11(self) -> float:
+        return self.view_transform.m11()
+
+    @property
+    def m12(self) -> float:
+        return self.view_transform.m12()
+
+    @property
+    def m21(self) -> float:
+        return self.view_transform.m21()
+
+    @property
+    def m22(self) -> float:
+        return self.view_transform.m22()
+
+    # Pratique pour ton cas du texte
+    @property
+    def x_sign(self) -> int:
+        return -1 if self.m11 < 0 else 1
+
+    @property
+    def y_sign(self) -> int:
+        return -1 if self.m22 < 0 else 1
+
+    def axis_flip_transform(self) -> QTransform:
+        """Miroir à appliquer à un item pour qu'il reste lisible à l'écran."""
+        return QTransform.fromScale(self.x_sign, self.y_sign)
 
 
 class PreviewObject(ABC):
@@ -121,7 +160,6 @@ class GraphicElementObject:
 
     def set_resizable_class(self, cls: ResizableGraphicsItem):
         """Définit la classe de l'item graphique"""
-        print(f"resizable class register : {cls}")
         self._resizable_class = cls
         return self
 

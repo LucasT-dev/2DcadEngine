@@ -18,14 +18,16 @@ class TextElement(ElementObject):
         item = TextResizable()
         item.setFont(self.get_style().get_font())
         item.setPlainText(self.get_style().get_text())
-        item.setTextWidth(rect.width())
+        item.setTextWidth(-1)
         item.setPos(rect.topLeft())
         item.setZValue(self.get_style().get_z_value())
         item.setDefaultTextColor(self.get_style().get_text_color())
 
         # Correction d’orientation locale
         item.setTransformOriginPoint(0, 0)
-        item.setTransform(QTransform().scale(1, -1))
+        item.setTransform(self.axis_flip_transform())
+
+        item.set_snap_enable(True)
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -41,11 +43,11 @@ class TextElement(ElementObject):
                                     text: str = "Text",
                                     text_color: QColor = QColor(0, 0, 0),
                                     font: QFont = QFont("Arial", 14),
-                                    text_width: float = 1,
+                                    text_width: float = -1,
                                     z_value: int = 0,
                                     key: int = 0,
                                     value: str = uuid.uuid4(),
-                                    transform: QTransform = QTransform(),
+                                    transform: QTransform | None = None,
                                     visibility: bool = True,
                                     scale: float = 1.0,
                                     handle_style: HandleStyle = DEFAULT_STYLE,
@@ -59,12 +61,12 @@ class TextElement(ElementObject):
         item = TextResizable()
         item.setFont(font)
         item.setPlainText(text)
-        item.setTextWidth(text_width if text_width is not None else rect.width())
+        item.setTextWidth(text_width)
         item.setPos(rect.topLeft())
         item.setZValue(z_value)
         item.setFlags(flags)
         item.setDefaultTextColor(text_color)
-        item.setTransform(transform)
+        item.setTransform(transform if transform else QTransform().scale(1, -1))
 
         item.set_handle_style(handle_style)
         item.set_item_can_be_resizable(is_resizable)
@@ -76,3 +78,4 @@ class TextElement(ElementObject):
     @staticmethod
     def _compute_rect(p1: QPointF, p2: QPointF) -> QRectF:
         return QRectF(p1, p2).normalized()
+

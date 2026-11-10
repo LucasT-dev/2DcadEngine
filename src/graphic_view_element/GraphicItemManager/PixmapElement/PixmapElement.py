@@ -33,13 +33,15 @@ class PixmapElement(ElementObject):
         target_rect = QRectF(first_point, second_point).normalized()
 
 
-        pixmap = pixmap.transformed(QTransform().scale(1, -1))
+        pixmap = pixmap.transformed(QTransform().scale(self.m21, self.m22))
         pixmap = pixmap.scaled(target_rect.size().toSize(), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
 
         item = PixmapResizable(pixmap)
 
         item.setPos(target_rect.topLeft())
         item.setZValue(self.get_style().get_z_value())
+
+        item.set_snap_enable(True)
 
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |

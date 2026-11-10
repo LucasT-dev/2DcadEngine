@@ -25,6 +25,8 @@ class EllipseElement(ElementObject):
         item.setBrush(brush)
         item.setZValue(self.get_style().get_z_value())
 
+        item.set_snap_enable(True)
+
         item.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable

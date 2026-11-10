@@ -32,6 +32,8 @@ class GroupElement(ElementObject):
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable
         )
 
+        item.set_snap_enable(True)
+
         item.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges, True)
 
         item.setData(self.get_style().get_key(), self.get_style().get_value())

@@ -114,13 +114,15 @@ class Example_2:
                           border_style=Qt.PenStyle.SolidLine,
                           z_value=100)
 
-        view.g_add_item(name="text", history=True, first_point=QPointF(150, 300),
-                          second_point=QPointF(180, 250),
+        view.g_add_item(name="text", history=True, first_point=QPointF(300, 300),
+                          second_point=QPointF(400, 400),
                           z_value=100)
 
         view.g_set_shortcut_undo_action()
         view.g_set_shortcut_redo_action()
         view.g_set_shortcut_delete_item()
+
+        print(f"m 11 = {view.transform().m11()}")
 
         print("Moteur initialisé !")
 

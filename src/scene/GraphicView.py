@@ -615,6 +615,8 @@ class GraphicView(QGraphicsView):
         preview_instance = preview_class(style=self.style_element)
         element_instance = element_class(style=self.style_element)
 
+        element_instance.set_view(self)
+
         self.element_manager.register_element(name=element_name,
                                               element=GraphicElementObject(name=element_name,
                                                                             element_class=element_instance,
@@ -623,7 +625,6 @@ class GraphicView(QGraphicsView):
                                               .set_resizable_class(resizable_class)
 
                                               )
-
     # -------------------- end register object view method -----
 
 
@@ -768,7 +769,6 @@ class GraphicView(QGraphicsView):
         cmd = AddItemCommand(scene=self.scene(), item=item, description=f"add item {item.__class__.__name__}")
 
         self.scene().undo_stack.push(cmd)
-
 
     # -------------------- EVENT --------------------
     def wheelEvent(self, event):
