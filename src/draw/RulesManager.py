@@ -2,226 +2,133 @@ from PyQt6.QtCore import QPointF
 from PyQt6.QtWidgets import QWidget, QGraphicsView
 from PyQt6.QtGui import QPainter, QColor, QPen, QFont
 
+import math
+from PyQt6.QtCore import Qt, QPoint, QPointF
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen
+from PyQt6.QtWidgets import QWidget, QGraphicsView
 
-class HorizontalRuler(QWidget):
-    def __init__(self, view: QGraphicsView, parent=None):
+from adapter.ScreenConverter import pixels_per_mm
 
+
+class Ruler(QWidget):
+    SUBDIVS = {1: 5, 2: 4, 5: 5}   # nb de sous-graduations par graduation majeure
+    MIN_MAJOR_PX = 60              # espace mini entre deux graduations majeures
+
+    def __init__(self, view: QGraphicsView,
+                 orientation=Qt.Orientation.Horizontal, parent=None):
         super().__init__(parent)
-
         self.view = view
+        self.orientation = orientation
+        self.unit = "mm"
 
-        # Configuration basique
-        self._background_color = QColor("#2D2D2D")
-        self._tick_color = QColor("#888888")
-        self._text_color = QColor("#FFFFFF")
+        self._bg = QColor("#2D2D2D")
+        self._tick = QColor("#888888")
+        self._text = QColor("#FFFFFF")
         self._font = QFont("Arial", 7)
+        self.major_len, self.minor_len = 10, 4
 
-        self.unit = "mm"  # 'px', 'mm', 'cm'
-        self.dpi = self.logicalDpiX()  # ou self.view.logicalDpiX() pour précision
+        if orientation == Qt.Orientation.Horizontal:
+            self.setFixedHeight(20)
+        else:
+            self.setFixedWidth(20)
 
-        self.setFixedHeight(20)
+        # Redessiner quand la vue bouge ou zoome
+        refresh = lambda *_: self.update()
+        view.horizontalScrollBar().valueChanged.connect(refresh)
+        view.verticalScrollBar().valueChanged.connect(refresh)
+        view.horizontalScrollBar().rangeChanged.connect(refresh)
+        view.verticalScrollBar().rangeChanged.connect(refresh)
+        if hasattr(view, "zoom_changed"):
+            view.zoom_changed.connect(refresh)
 
-        self.spacing = 10
-        self.major_tick = 10
-        self.minor_tick = 2
-        self.major_tick_interval = 50
-
-    def update_style(self, background=None, tick=None, text=None, font_family=None, font_size=None):
-        if background:
-            self._background_color = QColor(background)
-        if tick:
-            self._tick_color = QColor(tick)
-        if text:
-            self._text_color = QColor(text)
-        if font_family or font_size:
-            current_size = self._font.pointSize() if font_size is None else font_size
-            current_family = self._font.family() if font_family is None else font_family
-            self._font = QFont(current_family, current_size)
+    def set_unit(self, unit: str):
+        if unit not in ("px", "mm", "cm"):
+            raise ValueError("Unit must be 'px', 'mm' or 'cm'")
+        self.unit = unit
         self.update()
 
-    def set_parameter(self, height: int = 20,
+    def set_parameter(self,
                 background_color: QColor = QColor("#2D2D2D"),
                 tick_color: QColor = QColor("#888888"),
                 text_color: QColor = QColor("#FFFFFF"),
                 font = QFont("Arial", 7)
                 ):
-        self.setFixedHeight(height)
-        self._background_color = background_color
-        self._tick_color = tick_color
-        self._text_color = text_color
+
+        self._bg = background_color
+        self._tick = tick_color
+        self._text = text_color
         self._font = font
-        self.update()
 
-    def set_unit(self, unit: str):
-        if unit not in ("px", "mm", "cm"):
-            raise ValueError("Unit must be 'px', 'mm' or 'cm'")
-        self.unit = unit
-        self.update()
+    def _unit_factor(self) -> float:
+        """Valeur affichée = mm de scène * facteur."""
+        if self.unit == "mm":
+            return 1.0
+        if self.unit == "cm":
+            return 0.1
+        return pixels_per_mm(self.view)   # px à 100 %
 
-    def _convert_value(self, scene_value: float) -> float:
-        """Convertit une coordonnée de scène (mm) dans l’unité choisie."""
-        if self.unit == "px":
-            # scène en mm → px à l'écran
-            pixels_per_mm = self.view.logicalDpiX() / 25.4
-            return scene_value * pixels_per_mm
-        elif self.unit == "mm":
-            return scene_value
-        elif self.unit == "cm":
-            return scene_value / 10.0
-        return scene_value
+    def _nice_major(self, px_per_unit: float):
+        raw = self.MIN_MAJOR_PX / px_per_unit
+        base = 10 ** math.floor(math.log10(raw))
+        mant = next(m for m in (1, 2, 5, 10) if m * base >= raw)
+        if mant == 10:
+            mant, base = 1, base * 10
+        return mant * base, self.SUBDIVS[mant]
 
     def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.fillRect(event.rect(), self._background_color)
-        painter.setFont(self._font)
-        painter.setPen(QPen(self._tick_color))
+        p = QPainter(self)
+        p.fillRect(event.rect(), self._bg)
+        p.setFont(self._font)
 
-        # Zone visible dans la scène (coordonnées réelles)
-        scene_x_start = self.view.mapToScene(0, 0).x()
-        scene_x_end = self.view.mapToScene(self.width(), 0).x()
+        horiz = self.orientation == Qt.Orientation.Horizontal
+        vp = self.view.viewport()
+        t = self.view.transform()
+        scale = abs(t.m11() if horiz else t.m22())   # pixels écran par mm de scène
+        if scale == 0:
+            return
 
-        if scene_x_start > scene_x_end:
-            scene_x_start, scene_x_end = scene_x_end, scene_x_start
+        factor = self._unit_factor()
+        major, subdiv = self._nice_major(scale / factor)
+        minor = major / subdiv
 
-        # Alignement des ticks sur la grille
-        first_tick = int(scene_x_start // self.spacing) * self.spacing
-        last_tick = int(scene_x_end)
+        # décalage règle <-> viewport
+        o = self.mapFromGlobal(vp.mapToGlobal(QPoint(0, 0)))
+        offset = o.x() if horiz else o.y()
 
-        for x in range(first_tick, last_tick + self.spacing, self.spacing):
-            x_view = self.view.mapFromScene(QPointF(x, 0)).x()
-            if 0 <= x_view <= self.width():
-                if x % self.major_tick_interval == 0:
-                    painter.drawLine(int(x_view), 0, int(x_view), self.major_tick)
-                    painter.setPen(QPen(self._text_color))
+        # plage visible dans la scène
+        a = self.view.mapToScene(0, 0)
+        b = self.view.mapToScene(vp.width(), vp.height())
+        s0, s1 = (a.x(), b.x()) if horiz else (a.y(), b.y())
+        if s0 > s1:
+            s0, s1 = s1, s0
 
-                    label = f"{self._convert_value(x):.1f}"
-                    painter.drawText(int(x_view + 2), self.major_tick + 6, label)
+        n0 = math.floor(s0 * factor / minor)
+        n1 = math.ceil(s1 * factor / minor)
 
-                    painter.setPen(QPen(self._tick_color))
+        for n in range(n0, n1 + 1):
+            value = n * minor
+            scene = value / factor
+            pt = self.view.mapFromScene(
+                QPointF(scene, 0) if horiz else QPointF(0, scene))
+            pos = (pt.x() if horiz else pt.y()) + offset
+
+            is_major = (n % subdiv == 0)
+            length = self.major_len if is_major else self.minor_len
+            p.setPen(QPen(self._tick))
+            if horiz:
+                p.drawLine(pos, 0, pos, length)
+            else:
+                p.drawLine(0, pos, length, pos)
+
+            if is_major:
+                p.setPen(QPen(self._text))
+                label = f"{round(value, 6):g}"
+                if horiz:
+                    p.drawText(pos + 2, self.major_len + 8, label)
                 else:
-                    painter.drawLine(int(x_view), 0, int(x_view), self.minor_tick)
-
-        painter.end()
-
-class VerticalRuler(QWidget):
-
-    def __init__(self, view: QGraphicsView, parent=None):
-
-        super().__init__(parent)
-
-        self.view = view
-        self.setFixedWidth(20)
-
-        # Configuration basique
-        self._background_color = QColor("#2D2D2D")
-        self._tick_color = QColor("#888888")
-        self._text_color = QColor("#FFFFFF")
-        self._font = QFont("Arial", 7)
-
-        self.unit = "mm"  # 'px', 'mm', 'cm'
-        self.dpi = self.logicalDpiX()  # ou self.view.logicalDpiX() pour précision
-
-        self.spacing = 10
-        self.major_tick = 10
-        self.minor_tick = 2
-        self.major_tick_interval = 50
-
-    def update_style(self, background=None, tick=None, text=None, font_family=None, font_size=None):
-        if background:
-            self._background_color = QColor(background)
-        if tick:
-            self._tick_color = QColor(tick)
-        if text:
-            self._text_color = QColor(text)
-        if font_family or font_size:
-            current_size = self._font.pointSize() if font_size is None else font_size
-            current_family = self._font.family() if font_family is None else font_family
-            self._font = QFont(current_family, current_size)
-        self.update()
-
-    def set_parameter(self, height: int = 20,
-                      background_color: QColor = QColor("#2D2D2D"),
-                      tick_color: QColor = QColor("#888888"),
-                      text_color: QColor = QColor("#FFFFFF"),
-                      font=QFont("Arial", 7)
-                      ):
-        self.setFixedHeight(height)
-        self._background_color = background_color
-        self._tick_color = tick_color
-        self._text_color = text_color
-        self._font = font
-        self.update()
-
-    def set_unit(self, unit: str):
-
-        if unit not in ("px", "mm", "cm"):
-            raise ValueError("Unit must be 'px', 'mm' or 'cm'")
-        self.unit = unit
-        self.update()
-
-    def _convert_value(self, scene_value: float) -> float:
-        """Convertit une coordonnée de scène (mm) dans l’unité choisie."""
-        if self.unit == "px":
-            # scène en mm → px à l'écran
-            pixels_per_mm = self.view.logicalDpiX() / 25.4
-            return scene_value * pixels_per_mm
-        elif self.unit == "mm":
-            return scene_value
-        elif self.unit == "cm":
-            return scene_value / 10.0
-        return scene_value
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.fillRect(event.rect(), self._background_color)
-        painter.setFont(self._font)
-        painter.setPen(QPen(self._tick_color))
-
-        # Zone visible dans la scène
-        scene_y_start = self.view.mapToScene(0, 0).y()
-        scene_y_end = self.view.mapToScene(0, self.height()).y()
-
-        if scene_y_start > scene_y_end:
-            scene_y_start, scene_y_end = scene_y_end, scene_y_start
-
-        # Aligner la première graduation sur le multiple de spacing
-        first_tick = int(scene_y_start // self.spacing) * self.spacing
-        last_tick = int(scene_y_end)
-
-        for y in range(first_tick, last_tick + self.spacing, self.spacing):
-            y_view = self.view.mapFromScene(0, y).y()
-            if 0 <= y_view <= self.height():
-                if y % self.major_tick_interval == 0:
-                    painter.drawLine(0, int(y_view), self.major_tick, int(y_view))
-                    painter.setPen(QPen(self._text_color))
-
-                    label = f"{self._convert_value(y):.1f}"
-                    painter.drawText(self.major_tick - 8, int(y_view - 5), label)
-
-                    painter.setPen(QPen(self._tick_color))
-                else:
-                    painter.drawLine(0, int(y_view), self.minor_tick, int(y_view))
-
-        painter.end()
-
-
-class CornerRuler(QWidget):
-
-    def __init__(self, view: QGraphicsView):
-
-        super().__init__()
-
-        self.view = view
-
-        self._background_color = QColor("#2D2D2D")
-
-    def set_background_color(self, color: str):
-        self._background_color = QColor(color)
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        try:
-            painter.fillRect(self.rect(), self._background_color)
-        finally:
-            painter.end()
+                    p.save()
+                    p.translate(self.major_len + 8, pos - 2)
+                    p.rotate(-90)
+                    p.drawText(0, 0, label)
+                    p.restore()
+        p.end()

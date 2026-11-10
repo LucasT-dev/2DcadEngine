@@ -24,8 +24,7 @@ class Camera:
     def __init__(self, view: QGraphicsView):
         super().__init__()
 
-        self.zoom_changed = None
-
+        self._base_scale = None
         self.view = view
 
         self.config = CameraConfig()
@@ -38,7 +37,9 @@ class Camera:
         # Connecter les événements de la vue
         self._setup_view()
         self.reset_view()
-        #self.calibrate_scale()
+        self.calibrate_scale()
+
+        self.zoom_changed = None
 
     def _setup_view(self):
         """Configuration initiale de la vue"""
@@ -48,22 +49,6 @@ class Camera:
                                         else QGraphicsView.ViewportAnchor.AnchorViewCenter
         )
         self.view.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
-
-    def calibrate_scale(self):
-        """
-        Calibre l'échelle de la vue pour que 1 unité de la scène = 1 mm physique.
-        """
-        # Récupère le DPI de l'écran
-        dpi = ScreenConverter.get_screen_dpi()[0]
-        pixels_per_mm = dpi / 25.4  # Nombre de pixels par mm
-
-        # Définit une transformation pour que 1 unité de la scène = 1 mm
-        transform = QTransform()
-        transform.scale(pixels_per_mm, pixels_per_mm)
-        self.view.setTransform(transform)
-
-        # Met à jour le niveau de zoom actuel
-        self._current_zoom = 1.0
 
     def set_zoom_enabled(self, enabled: bool):
         """Activer/désactiver le zoom"""
@@ -90,14 +75,32 @@ class Camera:
         """Définir le facteur de zoom"""
         self.config.zoom_factor = max(1.01, factor)
 
+
+    def _ppm(self) -> float:
+        return ScreenConverter.pixels_per_mm(self.view)
+
+    def calibrate_scale(self):
+        self._base_scale = self._ppm()
+        self.view.setTransform(QTransform.fromScale(self._base_scale, self._base_scale))
+        self._emit_zoom()
+
+    def _apply_zoom_factor(self, factor: float):
+        self.view.scale(factor, factor)
+        self._emit_zoom()
+
     def reset_view(self):
-        """Réinitialiser la vue"""
-        self.view.setTransform(QTransform())
-        self._current_zoom = 1.0
+        self.calibrate_scale()  # au lieu de QTransform()
+
+    def set_zoom(self, zoom: float):
+        zoom = max(self.config.min_zoom, min(self.config.max_zoom, zoom))
+        base = self._ppm()
+        self._base_scale = base
+        self.view.setTransform(QTransform.fromScale(zoom * base, zoom * base))
+        self._emit_zoom()
 
     def get_current_zoom(self) -> float:
-        """Obtenir le niveau de zoom actuel"""
-        return self._current_zoom
+        base = getattr(self, "_base_scale", 0) or 1.0
+        return self.view.transform().m11() / base
 
     def zoom_to(self, level: float, center: QPointF = None):
         """Zoomer à un niveau spécifique"""
@@ -124,50 +127,18 @@ class Camera:
 
         self._current_zoom = level
 
-
     def handle_wheel(self, event) -> bool:
-        """Gère l'événement de la molette de souris pour zoomer/dézoomer."""
         if not self.config.zoom_enabled:
             return False
 
-        delta = event.angleDelta().y()
-        zoom_factor = self.config.zoom_factor if delta > 0 else 1 / self.config.zoom_factor
-        new_zoom = self._current_zoom * zoom_factor
+        step = self.config.zoom_factor if event.angleDelta().y() > 0 else 1 / self.config.zoom_factor
+        current = self.get_current_zoom()
+        new_zoom = max(self.config.min_zoom, min(self.config.max_zoom, current * step))
+        real_factor = new_zoom / current
 
-        # Vérifier les limites de zoom
-        if self.config.min_zoom <= new_zoom <= self.config.max_zoom:
-            if self.config.smooth_zoom:
-                # Zoom progressif
-                steps = 5
-                factor = pow(zoom_factor, 1/steps)
-                for _ in range(steps):
-                    self.view.scale(factor, factor)
-            else:
-                # Zoom direct
-                self.view.scale(zoom_factor, zoom_factor)
-
-            self._current_zoom = new_zoom
-
-            self.view.zoom_changed.emit(self._current_zoom)
-            return True
-
+        if abs(real_factor - 1) > 1e-9:
+            self._apply_zoom_factor(real_factor)
         return True
-
-    def set_zoom(self, zoom: float):
-        """
-        Définit le niveau de zoom (1.0 = taille réelle).
-        """
-        # Récupère le DPI de l'écran
-        dpi = ScreenConverter.get_screen_dpi()[0]
-        pixels_per_mm = dpi / 25.4
-
-        # Calcule la transformation pour le zoom souhaité
-        transform = QTransform()
-        transform.scale(zoom * pixels_per_mm, zoom * pixels_per_mm)
-        self.view.setTransform(transform)
-
-        # Met à jour le niveau de zoom actuel
-        self._current_zoom = zoom
 
     def set_zoom_percent(self, percent: float):
         """
@@ -184,11 +155,7 @@ class Camera:
         self.set_zoom(zoom_level)
 
     def get_zoom_percent(self) -> float:
-        """
-        Retourne le niveau de zoom actuel en pourcentage.
-        100% = taille réelle (1:1).
-        """
-        return self._current_zoom * 100.0
+        return self.get_current_zoom() * 100.0
 
     def handle_mouse_press(self, event) -> bool:
         """Gère l'événement de clic de souris pour le déplacement."""
@@ -229,6 +196,10 @@ class Camera:
 
         return True
 
-
+    def _emit_zoom(self):
+        """Émet la valeur réelle, lue depuis la transformation (jamais en retard)."""
+        z = self.get_current_zoom()
+        self.view.zoom_changed.emit(z)
+        self.view.zoom_percent_changed.emit(z * 100.0)
 
 

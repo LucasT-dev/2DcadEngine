@@ -80,21 +80,19 @@ class Example_1(MainCad):
                                               end_x=0, end_y=-10)
 
         # Mise à jour du style des règles
-        self.g_get_graphic_view.h_ruler.update_style(
-            background="#2D2D2D",
-            tick=QColor(0, 255, 0, 150),
-            text="#FFFFFF",
-            font_family="Helvetica",
-            font_size=7
+        self.g_get_graphic_view.h_ruler.set_parameter(
+            background_color=QColor("#2D2D2D"),
+            tick_color=QColor(0, 255, 0, 150),
+            text_color=QColor("#FFFFFF"),
+            font=QFont("Helvetica", 7)
         )
 
         # Mise à jour du style des règles
-        self.g_get_graphic_view.v_ruler.update_style(
-            background="#2D2D2D",
-            tick=QColor(255, 0, 0, 150),
-            text="#FFFFFF",
-            font_family="Helvetica",
-            font_size=7
+        self.g_get_graphic_view.v_ruler.set_parameter(
+            background_color=QColor("#2D2D2D"),
+            tick_color=QColor(255, 0, 0, 150),
+            text_color=QColor("#FFFFFF"),
+            font=QFont("Helvetica", 7)
         )
 
 
@@ -131,8 +129,8 @@ class Example_1(MainCad):
             name="points"
         )"""
 
-        self.g_get_view.camera.set_zoom_limits(0.8, 10.0)
-        self.g_get_view.camera.set_zoom_factor(1.2)  # 1.2
+        #self.g_get_view.camera.set_zoom_limits(0.8, 10.0)
+        #self.g_get_view.camera.set_zoom_factor(1.2)  # 1.2
         self.g_get_view.camera.set_zoom_to_cursor(True)
         #self.g_get_view.camera.zoom_to(1.0)
 
@@ -150,6 +148,7 @@ class Example_1(MainCad):
         # self.g_get_view.mouse_tracker.mouseClicked.connect(lambda state: print("Click", state["buttons"]))
         # self.g_get_view.mouse_tracker.mouseDoubleClicked.connect(lambda state: print("Double click"))
         self.g_get_view.mouse_tracker.mouseWheel.connect(lambda state: self.wheel_move())
+        self.g_get_view.zoom_percent_changed.connect(lambda p: self.zoom_label())
         # self.g_get_view.mouse_tracker.mouseDragged.connect(lambda state: print("mouseDragged"))
         # self.g_get_view.mouse_tracker.mouseHovered.connect(lambda state: print("mouseHovered"))
 
@@ -314,6 +313,12 @@ class Example_1(MainCad):
             self.g_get_view.g_unselect_items()
 
     def wheel_move(self):
+        #var = int(self.g_get_view.camera.get_zoom_percent())
+
+        #self.g_get_view.annotation_manager.update_text("zoom", f"<b>Zoom :</b> {var} %")
+        pass
+
+    def zoom_label(self):
         var = int(self.g_get_view.camera.get_zoom_percent())
 
         self.g_get_view.annotation_manager.update_text("zoom", f"<b>Zoom :</b> {var} %")

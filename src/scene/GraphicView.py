@@ -14,7 +14,7 @@ from draw.GridManager import Grid
 from draw.HistoryManager import ModifyItemPropertiesCommand, GroupItemsCommand, \
     UngroupItemsCommand, AddItemCommand, RemoveItemsCommand
 from draw.MouseTracker import MouseTracker
-from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler
+from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler, Ruler
 from exception.GraphicElementExceptions import ElementNotRegisteredError, ElementCreationError, \
     GraphicElementError
 from graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
@@ -51,8 +51,8 @@ class GraphicViewContainer(QWidget):
 
     def _setup_ui(self):
         if self.show_ruler:
-            self.h_ruler = HorizontalRuler(self.view)
-            self.v_ruler = VerticalRuler(self.view)
+            self.h_ruler = Ruler(view= self.view, orientation=Qt.Orientation.Horizontal, parent=None) #HorizontalRuler(self.view)
+            self.v_ruler = Ruler(view= self.view, orientation=Qt.Orientation.Vertical, parent=None) #VerticalRuler(self.view)
             self.rule_corner = CornerRuler(self.view)
 
             # Index du coin vide
@@ -113,6 +113,7 @@ class GraphicView(QGraphicsView):
     tool_changed = pyqtSignal(str)
     selection_changed = pyqtSignal(list)
     zoom_changed = pyqtSignal(float)
+    zoom_percent_changed = pyqtSignal(float)
     key_press_event = pyqtSignal(int)
 
     def __init__(self, scene, parent=None):
@@ -249,7 +250,7 @@ class GraphicView(QGraphicsView):
 
 
     def g_set_tool(self, tool: str):
-        print("g_set_too : " + tool)
+
         self._cancel_drawing()
         self.style_element.set_tool(tool)
 
@@ -493,7 +494,7 @@ class GraphicView(QGraphicsView):
 
     def g_serialize_items(self, item_list) -> list[dict]:
         """Parcourt tous les items et sérialise ceux appartenant à un GraphicElementObject."""
-        print("g_serialize_items")
+
         if not self.scene():
             return []
 
@@ -504,34 +505,25 @@ class GraphicView(QGraphicsView):
 
         for item in item_list:
 
-            print(f"Item : {item}")
-
             parent = item.parentItem()
-            print(parent)
+
             if parent and any(isinstance(parent, cls) for cls in resizable_classes):
-                print("continue 1")
+
                 continue  # ne pas enregistrer les enfants (déjà dans le groupe)
-            print("check item est resize ?")
             # Vérifie si l'item est un Resizable (ou un type enregistré)
-            print(resizable_classes)
 
-            print(len(resizable_classes))
-
-            for cls in resizable_classes:
-                print(f"Cls : {cls} is item {item} = {isinstance(item, cls)}" )
+            #for cls in resizable_classes:
+                #print(f"Cls : {cls} is item {item} = {isinstance(item, cls)}" )
 
 
             if any(isinstance(item, cls) for cls in resizable_classes):
-                print("Item est un resize")
 
                 # Vérifie que l'item possède bien une méthode to_dict
                 if hasattr(item, "to_dict") and callable(item.to_dict):
-                    print("have dict method")
                     serialized_items.append(item.to_dict())
                 else:
                     print(f"[WARN] L'item {item} est resizable mais n'a pas de méthode to_dict()")
 
-        print(f"serialized_items : {serialized_items}")
         return serialized_items
 
     def g_deserialize_items(self, data_list: list[dict]) -> list[QGraphicsItem]:
@@ -552,13 +544,8 @@ class GraphicView(QGraphicsView):
             class_path = entry.get("data", {}).get("class")
             resizable_class = self.resolve_class_from_path(class_path)
 
-            print(f"class_path : {class_path}")
-            print(f"resizable_class : {resizable_class}")
-
             try:
                 item = resizable_class.from_dict(data=entry)
-
-                print(item)
 
                 if item:
                     deserialized_items.append(item)
