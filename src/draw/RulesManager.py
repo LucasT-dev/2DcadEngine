@@ -132,3 +132,24 @@ class Ruler(QWidget):
                     p.drawText(0, 0, label)
                     p.restore()
         p.end()
+
+class CornerRuler(QWidget):
+
+    def __init__(self, view: QGraphicsView):
+
+        super().__init__()
+
+        self.view = view
+
+        self._background_color = QColor("#2D2D2D")
+
+    def set_background_color(self, color: str):
+        self._background_color = QColor(color)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        try:
+            painter.fillRect(self.rect(), self._background_color)
+        finally:
+            painter.end()

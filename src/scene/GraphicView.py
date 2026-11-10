@@ -14,7 +14,7 @@ from draw.GridManager import Grid
 from draw.HistoryManager import ModifyItemPropertiesCommand, GroupItemsCommand, \
     UngroupItemsCommand, AddItemCommand, RemoveItemsCommand
 from draw.MouseTracker import MouseTracker
-from draw.RulesManager import HorizontalRuler, VerticalRuler, CornerRuler, Ruler
+from draw.RulesManager import CornerRuler, Ruler
 from exception.GraphicElementExceptions import ElementNotRegisteredError, ElementCreationError, \
     GraphicElementError
 from graphic_view_element.GraphicItemManager.GraphicElementManager import GraphicElementManager
