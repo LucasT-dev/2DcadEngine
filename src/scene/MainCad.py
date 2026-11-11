@@ -50,7 +50,7 @@ class MainCad(QWidget):
             return
         self.g_init_engine()
 
-    def force__run_configurator(self):
+    def force_run_configurator(self):
         """Lance le configurateur sans attendre l'affichage."""
         if self._initialized or self._disposed:
             return

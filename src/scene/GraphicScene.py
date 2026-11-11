@@ -1,3 +1,6 @@
+import logging
+
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsScene
 
 
@@ -61,6 +64,6 @@ class GraphicScene(QGraphicsScene):
             painter.setOpacity(self._plan_opacity)
             self._plan_scene.render(painter, rect, rect, Qt.AspectRatioMode.IgnoreAspectRatio)
         except Exception:
-            log.exception("Erreur de rendu du fond de plan")
+            logging.exception("Erreur de rendu du fond de plan")
         finally:
             painter.restore()

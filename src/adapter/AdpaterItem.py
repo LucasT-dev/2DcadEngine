@@ -12,7 +12,6 @@ from graphic_view_element.GraphicItemManager.Handles.SnapIcon.SnapTypeEnum impor
 
 
 def get_data(item):
-    print(item.get_points_of_interest_local())
 
     return {
         "class": f"{type(item).__module__}.{type(item).__name__}",
@@ -114,7 +113,6 @@ def point_from_dict(data: dict) -> QPointF:
     return QPointF(data["x"], data["y"])
 
 def poi_to_dict(poi: PointOfInterest) -> dict:
-    print(poi)
     return {
         "point": point_to_dict(poi.point),
         "snap_type": poi.snap_type.name,   # ex: "ENDPOINT" — plus robuste qu'un int

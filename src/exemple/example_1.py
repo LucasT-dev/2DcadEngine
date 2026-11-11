@@ -1,7 +1,6 @@
 import json
 import logging
 import sys
-from logging import log
 
 import keyboard
 from PyQt6.QtCore import Qt, QPointF
