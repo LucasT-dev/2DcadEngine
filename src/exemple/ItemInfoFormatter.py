@@ -40,7 +40,6 @@ class ItemInfoFormatter:
 
     def _get_clean_type(self, item):
         cls = type(item).__name__
-        # Tu peux filtrer ici si besoin
         return cls.replace("QGraphics", "").replace("Item", "")
 
     def _color_rgb(self, color: QColor):

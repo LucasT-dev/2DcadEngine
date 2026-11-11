@@ -165,8 +165,6 @@ class TextResizable(ResizableGraphicsItem, QGraphicsTextItem):
 
     def itemChange(self, change, value):
         """Gestion des changements d'état du text."""
-        print(change)
-        print(value)
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
             selected = bool(value)
             self.select_handle(selected)

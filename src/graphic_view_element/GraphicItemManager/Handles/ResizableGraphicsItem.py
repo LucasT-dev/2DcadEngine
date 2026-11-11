@@ -461,11 +461,9 @@ class ResizableGraphicsItem:
         return point
 
     def _normalize_poi(self, raw) -> list[SnapCandidate]:
-        print("_normalize_poi")
         result = []
         for entry in raw:
             if isinstance(entry, tuple):
-                print("raw is tuple")
                 point, snap_type = entry
             else:
                 point, snap_type = entry, SnapType.POINT_OF_INTEREST

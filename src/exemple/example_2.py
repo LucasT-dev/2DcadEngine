@@ -1,4 +1,5 @@
 import faulthandler
+import logging
 import sys
 
 from PyQt6.QtCore import QPointF, Qt
@@ -31,21 +32,20 @@ from graphic_view_element.GraphicItemManager.TextElement.TextElement import Text
 from graphic_view_element.GraphicItemManager.TextElement.TextPreview import TextPreview
 from graphic_view_element.GraphicItemManager.TextElement.TextResizable import TextResizable
 
+logging.basicConfig(level=logging.DEBUG)
 
 class Example_2:
 
-
     def init(self, maincad):
-        print("configure")
         """
         Reçoit une instance de MainCad,
         et configure la vue, la scène, les outils, etc.
         """
+
         view = maincad.g_get_view
         graphic_view = maincad.g_get_graphic_view
         scene = maincad.g_get_scene
 
-        print("1")
         view.g_set_scale(1, -1)
         view.g_set_scene_rectangle(-20, -20, 700, 600)
         view.g_set_background_color("#5B5B5B")
@@ -89,7 +89,7 @@ class Example_2:
                                 resizable_class=GroupResizable)
         view.g_register_shortcut(name="group", key=Qt.Key.Key_G)
         view.g_register_cursor(name="group", cursor=Qt.CursorShape.CrossCursor)
-        print("2")
+
 
         view.g_add_item(name="line", history=True, first_point=QPointF(0, 0),
             second_point=QPointF(100, 100),
@@ -122,9 +122,9 @@ class Example_2:
         view.g_set_shortcut_redo_action()
         view.g_set_shortcut_delete_item()
 
-        print(f"m 11 = {view.transform().m11()}")
 
-        print("Moteur initialisé !")
+
+        logging.info("Engine initialized !")
 
 
 faulthandler.enable()
@@ -134,7 +134,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     window = MainCad(configurator=Example_2(), show_ruler=True)
-    print(window)
     window.show()
 
     window.resize(500, 500)

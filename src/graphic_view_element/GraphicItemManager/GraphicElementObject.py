@@ -104,7 +104,6 @@ class MultiPointPreviewObject(PreviewObject):
         self._points: List[QPointF] = []
 
     def add_point(self, point: QPointF):
-        print("add point")
         """Valide un sommet supplémentaire (clic simple)."""
         self._points.append(point)
 

@@ -130,7 +130,7 @@ class ModifyItemCommand(QUndoCommand):
 
 
         elif isinstance(self.item, QGraphicsSvgItem):
-            print(geometry)
+
             pos_x, pos_y, m11, m22, dx, dy = geometry
             self.item.setPos(pos_x, pos_y)
 

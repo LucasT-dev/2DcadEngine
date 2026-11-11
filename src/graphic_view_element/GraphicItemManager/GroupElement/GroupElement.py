@@ -57,8 +57,6 @@ class GroupElement(ElementObject):
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable,
                                     items=None) -> GroupResizable:
 
-        print("create_custom_graphics_item")
-
         if items is None:
             items = []
 

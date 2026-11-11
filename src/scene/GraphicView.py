@@ -174,7 +174,7 @@ class GraphicView(QGraphicsView):
         self.setRenderHint(render)
 
     def g_set_background_color(self, hex_color: str):
-        self.setBackgroundBrush(QBrush(QColor(hex_color)))
+        self.scene().setBackgroundBrush(QBrush(QColor(hex_color)))
 
     def g_set_scale(self, sx, sy):
         self.scale(sx, sy)
@@ -955,12 +955,6 @@ class GraphicView(QGraphicsView):
     def paintEvent(self, event):
         super().paintEvent(event)
 
-        painter = QPainter(self.viewport())  # begin() est déjà fait ici
-        try:
-            scale = self.transform().m11()
-        finally:
-            painter.end()
-
     # -------------------- Start import item ---------
 
     def g_build_temporary_group(self, items: list[QGraphicsItem]) -> QGraphicsItem:
@@ -969,8 +963,6 @@ class GraphicView(QGraphicsView):
         à leur centroïde. Le groupe n'est PAS ajouté à la scène ici — c'est
         au code appelant de le faire (placement, ou ajout direct).
         """
-        print("g_build_temporary_group")
-        print(items)
 
         if not items:
             raise ValueError("Impossible de créer un groupe vide")
@@ -983,19 +975,13 @@ class GraphicView(QGraphicsView):
             center += item.pos()
         center /= len(items)
 
-        print("center")
-
         group = GroupElement.create_custom_graphics_item(
             first_point=QPointF(0, 0), second_point=QPointF(0, 0),
             border_color=QColor(0, 255, 0, 0), border_style=Qt.PenStyle.SolidLine,
             border_width=10, fill_color=QColor(0, 255, 0, 0), items=items
         )
 
-        print("group create")
-
         group.setPos(center)
-
-        print(f"group : {group}")
 
         """for item in items:
             print(item)

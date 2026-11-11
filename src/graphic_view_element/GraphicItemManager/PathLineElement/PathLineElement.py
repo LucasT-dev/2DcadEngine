@@ -48,7 +48,6 @@ class PathLineElement(ElementObject):
                                     flags: QGraphicsItem.GraphicsItemFlag =
                                     QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
                                     QGraphicsItem.GraphicsItemFlag.ItemIsMovable) -> PathLineResizable:
-        print("0")
 
         pen = QPen(QColor(border_color))
         pen.setWidth(border_width)
@@ -64,7 +63,5 @@ class PathLineElement(ElementObject):
         item.setFlags(flags)
 
         item.setData(key, value)
-
-        print(item)
 
         return item

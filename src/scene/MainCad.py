@@ -50,6 +50,14 @@ class MainCad(QWidget):
             return
         self.g_init_engine()
 
+    def force__run_configurator(self):
+        """Lance le configurateur sans attendre l'affichage."""
+        if self._initialized or self._disposed:
+            return
+        self._initialized = True  # le showEvent ne relancera pas l'init
+        self._init_timer.stop()
+        self.g_init_engine()
+
     def g_init_engine(self):
         """Appelle le configurateur externe puis le hook de la sous-classe."""
         try:

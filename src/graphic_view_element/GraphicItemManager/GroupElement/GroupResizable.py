@@ -244,7 +244,7 @@ class GroupResizable(ResizableGraphicsItem, QGraphicsRectItem):
             self.replace_point_of_interest(p)
 
     def get_point_of_interest(self) -> list[tuple[QPointF, SnapType]]:
-        print("rect get_point_of_interest")
+
         points: list[tuple[QPointF, SnapType]] = []
         for poi in self._custom_points_of_interest:
             points.append((self.mapToScene(poi.point), poi.snap_type))

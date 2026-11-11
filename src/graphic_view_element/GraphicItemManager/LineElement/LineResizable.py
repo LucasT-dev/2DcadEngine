@@ -21,7 +21,7 @@ class LineResizable(ResizableGraphicsItem, QGraphicsLineItem):
         self.add_handle("end", self.line().p2())
 
     def handle_moved(self, role: str, event: QGraphicsSceneMouseEvent):
-        print("handle moved")
+
         if not self.get_item_is_resizable() : return # The item is not resizable.
 
         new_pos = self.mapFromScene(event.scenePos())

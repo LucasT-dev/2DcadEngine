@@ -1,5 +1,7 @@
 import json
+import logging
 import sys
+from logging import log
 
 import keyboard
 from PyQt6.QtCore import Qt, QPointF
@@ -42,6 +44,8 @@ bug -> disparition des item apres un group / ungroup
 legée bug sur le zoom
 
 """
+logging.basicConfig(level=logging.DEBUG)
+
 class Example_1(MainCad):
 
     def on_ready(self):
@@ -255,7 +259,7 @@ class Example_1(MainCad):
 
         keyboard.add_hotkey('p', self.export_to_pdf)
 
-        print("Moteur initialisé !")
+        logging.info("Engine initialized !")
 
     def escape(self):
         self.g_get_view.g_set_tool("mousse")
