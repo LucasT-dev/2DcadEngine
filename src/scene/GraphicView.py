@@ -346,6 +346,16 @@ class GraphicView(QGraphicsView):
                 else:
                     print(f"Failed to load image from URL: {url}")
 
+    def g_change_font_text_items_selected(self, font: QFont):
+
+        for item in self.g_get_items_selected():
+            if isinstance(item, QGraphicsTextItem):
+                old_item = item
+                item.setFont(font)
+
+                cmd = ModifyItemPropertiesCommand(old_item, item, "change item style")
+                self.scene().undo_stack.push(cmd)
+
     def g_up_z_value_items_selected(self):
         for item in self.g_get_items_selected():
             old_item = item
