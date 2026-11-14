@@ -72,8 +72,11 @@ class PreviewObject(ABC):
     is_multi_point: bool = False
 
     def __init__(self, style):
+
         self._graphics_item = None
         self._style = style
+
+        self._view = None
 
     def get_style(self):
         return self._style
@@ -84,6 +87,45 @@ class PreviewObject(ABC):
     def reset(self):
         """Réinitialise l'aperçu. Commun à toutes les previews."""
         self._graphics_item = None
+
+    def set_view(self, view):
+        self._view = view
+        return self
+
+    @property
+    def view_transform(self) -> QTransform:
+        return self._view.transform() if self._view is not None else QTransform()
+
+    @property
+    def m11(self) -> float:
+        return self.view_transform.m11()
+
+    @property
+    def m12(self) -> float:
+        return self.view_transform.m12()
+
+    @property
+    def m21(self) -> float:
+        return self.view_transform.m21()
+
+    @property
+    def m22(self) -> float:
+        return self.view_transform.m22()
+
+    # Pratique pour ton cas du texte
+    @property
+    def x_sign(self) -> int:
+        return -1 if self.m11 < 0 else 1
+
+    @property
+    def y_sign(self) -> int:
+        return -1 if self.m22 < 0 else 1
+
+    def axis_flip_transform(self) -> QTransform:
+        """Miroir à appliquer à un item pour qu'il reste lisible à l'écran."""
+        return QTransform.fromScale(self.x_sign, self.y_sign)
+
+
 
     @abstractmethod
     def create_preview_item(self, start: QPointF, end: QPointF):

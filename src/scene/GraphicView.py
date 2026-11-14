@@ -625,6 +625,7 @@ class GraphicView(QGraphicsView):
         preview_instance = preview_class(style=self.style_element)
         element_instance = element_class(style=self.style_element)
 
+        preview_instance.set_view(self)
         element_instance.set_view(self)
 
         self.element_manager.register_element(name=element_name,
